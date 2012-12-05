@@ -1,13 +1,13 @@
 <?php
 
 /**
- * Antivirus file scan controller.
+ * File Scan report controller.
  *
  * @category   Apps
  * @package    File_Scan
  * @subpackage Controllers
  * @author     ClearFoundation <developer@clearfoundation.com>
- * @copyright  2011 ClearFoundation
+ * @copyright  2011-2012 ClearFoundation
  * @license    http://www.gnu.org/copyleft/gpl.html GNU General Public License version 3 or later
  * @link       http://www.clearfoundation.com/docs/developer/apps/file_scan/
  */
@@ -30,54 +30,67 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////////
+// D E P E N D E N C I E S
+///////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////
 // C L A S S
 ///////////////////////////////////////////////////////////////////////////////
 
 /**
- * Antivirus file scan controller.
+ * File Scan report controller.
  *
  * @category   Apps
  * @package    File_Scan
  * @subpackage Controllers
  * @author     ClearFoundation <developer@clearfoundation.com>
- * @copyright  2011 ClearFoundation
+ * @copyright  2011-2012 ClearFoundation
  * @license    http://www.gnu.org/copyleft/gpl.html GNU General Public License version 3 or later
  * @link       http://www.clearfoundation.com/docs/developer/apps/file_scan/
  */
 
-class File_Scan extends ClearOS_Controller
+class Report extends ClearOS_Controller
 {
     /**
-     * File scan server overview.
-     * 
+     * Account import progress controller
+     *
      * @return view
      */
 
     function index()
     {
-        // Load libraries
-        //---------------
+        // Load dependencies
+        //------------------
 
         $this->lang->load('file_scan');
         $this->load->library('file_scan/File_Scan');
 
-        try {
-            if ($this->input->post('start'))
-                $this->file_scan->start_scan();
-            else if ($this->input->post('stop'))
-                $this->file_scan->stop_scan();
-        } catch (\Exception $e) {
-            $this->page->set_message(clearos_exception_message($e), 'warning');
-        }
+        // Load view data
+        //---------------
+
+        $data = array();
+
+        $data['is_running'] = $this->file_scan->is_scan_running();
 
         // Load views
         //-----------
 
-        if ($this->file_scan->is_scan_running())
-            $views = array('file_scan/scan', 'file_scan/settings');
-        else
-            $views = array('file_scan/scan', 'file_scan/report');
+        $this->page->view_form('report', $data, lang('file_scan_app_name'));
+    }
 
-        $this->page->view_forms($views, lang('file_scan_app_name'));
+    /**
+     * File Scan report clear controller
+     *
+     * @return view
+     */
+
+    function clear()
+    {
+        // Load libraries
+        //---------------
+        $this->load->library('file_scan/File_Scan');
+
+        $this->file_scan->delete_state();
+        redirect('file_scan');
     }
 }

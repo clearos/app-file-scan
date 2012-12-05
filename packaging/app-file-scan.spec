@@ -1,9 +1,9 @@
 
 Name: app-file-scan
 Epoch: 1
-Version: 5.9.9.0
+Version: 1.4.0
 Release: 1%{dist}
-Summary: Antivirus File Scan
+Summary: Antimalware File Scan
 License: GPLv3
 Group: ClearOS/Apps
 Source: %{name}-%{version}.tar.gz
@@ -12,18 +12,18 @@ Requires: %{name}-core = 1:%{version}-%{release}
 Requires: app-base
 
 %description
-Antivirus File Scan description...
+The File Scan app scans the server's file system for infected files.
 
 %package core
-Summary: Antivirus File Scan - APIs and install
+Summary: Antimalware File Scan - APIs and install
 License: LGPLv3
 Group: ClearOS/Libraries
 Requires: app-base-core
 Requires: app-tasks-core
-Requires: webconfig-php-process
+Requires: app-antivirus-core
 
 %description core
-Antivirus File Scan description...
+The File Scan app scans the server's file system for infected files.
 
 This package provides the core API and libraries.
 
@@ -36,6 +36,9 @@ mkdir -p -m 755 %{buildroot}/usr/clearos/apps/file_scan
 cp -r * %{buildroot}/usr/clearos/apps/file_scan/
 
 install -d -m 0755 %{buildroot}/var/clearos/file_scan
+install -D -m 0644 packaging/app-file-scan.cron %{buildroot}/etc/cron.d/app-file-scan
+install -D -m 0755 packaging/file_scan %{buildroot}/usr/sbin/file_scan
+install -D -m 0644 packaging/file_scan.conf %{buildroot}/etc/clearos/file_scan.conf
 
 %post
 logger -p local6.notice -t installer 'app-file-scan - installing'
@@ -79,3 +82,6 @@ exit 0
 /usr/clearos/apps/file_scan/deploy
 /usr/clearos/apps/file_scan/language
 /usr/clearos/apps/file_scan/libraries
+/etc/cron.d/app-file-scan
+/usr/sbin/file_scan
+%attr(0644,webconfig,webconfig) %config(noreplace) /etc/clearos/file_scan.conf

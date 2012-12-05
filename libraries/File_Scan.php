@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Folder manipulation class.
+ * File Scan class.
  *
  * @category   Apps
  * @package    File_Scan
@@ -55,16 +55,16 @@ clearos_load_language('file_scan');
 // Classes
 //--------
 
-use \clearos\apps\base\Daemon as Daemon;
 use \clearos\apps\base\Engine as Engine;
 use \clearos\apps\base\File as File;
+use \clearos\apps\base\Configuration_File as Configuration_File;
 use \clearos\apps\base\Folder as Folder;
 use \clearos\apps\base\Shell as Shell;
 use \clearos\apps\tasks\Cron as Cron;
 
-clearos_load_library('base/Daemon');
 clearos_load_library('base/Engine');
 clearos_load_library('base/File');
+clearos_load_library('base/Configuration_File');
 clearos_load_library('base/Folder');
 clearos_load_library('base/Shell');
 clearos_load_library('tasks/Cron');
@@ -74,9 +74,11 @@ clearos_load_library('tasks/Cron');
 
 use \clearos\apps\base\Engine_Exception as Engine_Exception;
 use \clearos\apps\base\Folder_Not_Found_Exception as Folder_Not_Found_Exception;
+use \clearos\apps\base\Validation_Exception as Validation_Exception;
 
 clearos_load_library('base/Engine_Exception');
 clearos_load_library('base/Folder_Not_Found_Exception');
+clearos_load_library('base/Validation_Exception');
 
 ///////////////////////////////////////////////////////////////////////////////
 // C L A S S
@@ -107,7 +109,10 @@ class File_Scan extends Engine
     const FILE_AVSCAN = '/usr/sbin/file_scan';
 
     // List of directories to scan for viruses.
-    const FILE_CONFIG = '/etc/avscan.conf';
+    const FILE_SCAN_FOLDERS = '/etc/avscan.conf';
+
+    // Options for clamscan
+    const FILE_CONFIG = '/etc/clearos/file_scan.conf';
 
     // Filename of instance (PID) lock file
     const FILE_LOCKFILE = '/var/run/avscan.pid';
@@ -116,7 +121,7 @@ class File_Scan extends Engine
     const FILE_CLAMSCAN = '/usr/bin/clamscan';
 
     // Location of scanner state/status file
-    const FILE_STATE = '/tmp/.avscan.state';
+    const FILE_STATE = '/var/clearos/framework/tmp/avscan.state';
 
     // Locating of quarantine directory
     const PATH_QUARANTINE = '/var/lib/quarantine';
@@ -131,6 +136,8 @@ class File_Scan extends Engine
     ///////////////////////////////////////////////////////////////////////////////
 
     public $state = array();
+    protected $config = array();
+    protected $is_loaded = FALSE;
 
     ///////////////////////////////////////////////////////////////////////////
     // M E T H O D S
@@ -154,7 +161,7 @@ class File_Scan extends Engine
      *
      * @param string $dir Directory to scan
      *
-     * @throws Engine_Exception
+     * @throws Engine_Exception, Folder_Not_Found_Exception
      * @return void
      */
 
@@ -162,18 +169,18 @@ class File_Scan extends Engine
     {
         clearos_profile(__METHOD__, __LINE__);
 
-        // TODO: Wrong, should be using File class
-        if (!file_exists($dir))
-            throw new Engine_Exception(ANTIVIRUS_LANG_DIR_NOT_FOUND, CLEAROS_ERROR);
+        $folder = new Folder($dir, TRUE);
+        if (!$folder->exists())
+            throw new Folder_Not_Found_Exception($dir);
 
         $dirs = $this->get_directories();
 
         if (count($dirs) && in_array($dir, $dirs))
-            throw new Engine_Exception(ANTIVIRUS_LANG_DIR_EXISTS, CLEAROS_ERROR);
+            throw new Engine_Exception(lang('file_scan_dir_exists'), CLEAROS_ERROR);
 
         $dirs[] = $dir; sort($dirs);
 
-        $file = new File(File_Scan::FILE_CONFIG);
+        $file = new File(self::FILE_SCAN_FOLDERS, TRUE);
 
         if (!$file->exists()) {
             try {
@@ -204,10 +211,10 @@ class File_Scan extends Engine
         clearos_profile(__METHOD__, __LINE__);
 
         try {
-            $nfo = new File(File_Scan::PATH_QUARANTINE . "/$hash.nfo", TRUE);
+            $nfo = new File(self::PATH_QUARANTINE . "/$hash.nfo", TRUE);
             $nfo->Delete();
 
-            $dat = new File(File_Scan::PATH_QUARANTINE . "/$hash.dat", TRUE);
+            $dat = new File(self::PATH_QUARANTINE . "/$hash.dat", TRUE);
             $dat->Delete();
         } catch (Engine_Exception $e) {
             throw new Engine_Exception($e->get_message(), CLEAROS_ERROR);
@@ -227,25 +234,22 @@ class File_Scan extends Engine
     {
         clearos_profile(__METHOD__, __LINE__);
 
-        if (!file_exists(File_Scan::FILE_STATE)) {
-            throw new Engine_Exception(ANTIVIRUS_LANG_STATE_ERROR, CLEAROS_ERROR);
-        }
+        if (!file_exists(self::FILE_STATE))
+            throw new Engine_Exception(lang('file_scan_state_error'), CLEAROS_ERROR);
 
         // XXX: Here we use fopen rather than the File class.  This is because the File
         // class provides us with no way to do file locking (flock).  The state file
         // is therefore owned by webconfig so that we can manipulate it's contents.
-        if (!($fh = @fopen(File_Scan::FILE_STATE, 'a+'))) {
-            throw new Engine_Exception(ANTIVIRUS_LANG_STATE_ERROR, CLEAROS_ERROR);
-        }
+        if (!($fh = @fopen(File_Scan::FILE_STATE, 'a+')))
+            throw new Engine_Exception(lang('file_scan_state_error'), CLEAROS_ERROR);
 
         if ($this->unserialize_state($fh) === FALSE) {
             fclose($fh);
-            throw new Engine_Exception(ANTIVIRUS_LANG_STATE_ERROR, CLEAROS_ERROR);
+            throw new Engine_Exception(lang('file_scan_state_error'), CLEAROS_ERROR);
         }
 
-        if (!isset($this->state['virus'][$hash])) {
-            throw new Engine_Exception(ANTIVIRUS_LANG_FILE_NOT_FOUND, CLEAROS_ERROR);
-        }
+        if (!isset($this->state['virus'][$hash]))
+            throw new Engine_Exception(lang('base_file_not_found'), CLEAROS_ERROR);
 
         try {
             $virus = new File($this->state['virus'][$hash]['filename'], TRUE);
@@ -272,17 +276,17 @@ class File_Scan extends Engine
         clearos_profile(__METHOD__, __LINE__);
 
         $dirs = array();
-        $fh = @fopen(File_Scan::FILE_CONFIG, 'r');
+        $file = new File(self::FILE_SCAN_FOLDERS, TRUE);
+        if (!$file->exists())
+            return $dirs;
 
-        if(!$fh) return $dirs;
-
-        while (!feof($fh)) {
-            $dir = chop(fgets($fh, 4096));
-            // TODO: Wrong, should be using File class
-            if (strlen($dir) && file_exists($dir)) $dirs[] = $dir;
+        $folders = $file->get_contents_as_array();
+        foreach ($folders as $path) {
+            $folder = new Folder($path);
+            if ($folder->exists())
+                $dirs[] = $path;
         }
 
-        fclose($fh);
         sort($dirs);
 
         return $dirs;
@@ -305,8 +309,35 @@ class File_Scan extends Engine
         $dirs = $AVDIRS;
 
         foreach ($dirs as $dir => $label) {
-            // TODO: Wrong, should be using File class
-            if (!file_exists($dir)) unset($dirs[$dir]);
+            $folder = new Folder($dir);
+            if (!$folder->exists())
+                unset($dirs[$dir]);
+        }
+
+        return $dirs;
+    }
+
+    /**
+     * Returns array of custom directories.
+     *
+     * @return array of custom directory paths
+     */
+
+    public function get_directory_custom()
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        $dirs = array();
+        $all_dirs = $this->get_directories();
+        $preset_dirs = $this->get_directory_presets();
+
+        foreach ($all_dirs as $dir) {
+            $folder = new Folder($dir);
+            if (!$folder->exists())
+                continue;
+            if (array_key_exists($dir, $preset_dirs))
+                continue;
+            $dirs[] = $dir;
         }
 
         return $dirs;
@@ -444,6 +475,18 @@ class File_Scan extends Engine
         $info['malware_count'] = count($this->state['virus']);
         $info['current_scandir'] = $this->state['dir'];
 
+        // Errors and viruses
+        // ------------------
+        if (isset($this->state['virus']))
+            $info['virus'] = $this->state['virus'];
+        if (isset($this->state['error']))
+            $info['error'] = $this->state['error'];
+
+        // Stats
+        // -----
+        if (isset($this->state['stats']))
+            $info['stats'] = $this->state['stats'];
+
         // Create a generic status message for the state of the scanner
         //-------------------------------------------------------------
 
@@ -455,6 +498,66 @@ class File_Scan extends Engine
             $info['status'] = '...';
 
         return $info;
+    }
+
+    /**
+     * Set the notify on virus setting.
+     *
+     * @param boolean $notify notify
+     *
+     * @return void
+     * @throws Validation_Exception
+     */
+
+    function set_notify_on_virus($notify)
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        Validation_Exception::is_valid($this->validate_notify_on_virus($notify));
+
+        if ($notify === 'on' || $notify == 1 || $notify == TRUE)
+            $this->_set_parameter('notify_on_virus', 1);
+        else
+            $this->_set_parameter('notify_on_virus', 0);
+    }
+
+    /**
+     * Set the notify on error setting.
+     *
+     * @param boolean $notify notify
+     *
+     * @return void
+     * @throws Validation_Exception
+     */
+
+    function set_notify_on_error($notify)
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        Validation_Exception::is_valid($this->validate_notify_on_error($notify));
+
+        if ($notify === 'on' || $notify == 1 || $notify == TRUE)
+            $this->_set_parameter('notify_on_error', 1);
+        else
+            $this->_set_parameter('notify_on_error', 0);
+    }
+
+    /**
+     * Set the email address to notify of errors/viruses.
+     *
+     * @param String $email email
+     *
+     * @return void
+     * @throws Validation_Exception
+     */
+
+    function set_notify_email($email)
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        Validation_Exception::is_valid($this->validate_notify_email($email));
+
+        $this->_set_parameter('notify-email', $email);
     }
 
     /**
@@ -497,7 +600,7 @@ class File_Scan extends Engine
     }
 
     /**
-     * Returns configured antivirus schedule.
+     * Returns configured file scan schedule.
      *
      * @return array of the scanner's configured schedule. 
      * @throws Engine_Exception
@@ -512,11 +615,11 @@ class File_Scan extends Engine
         $month = '*';
         $cron = new Cron();
 
-        if (!$cron->exists_configlet('app-antivirus')) return array('*', '*', '*');
+        if (!$cron->exists_configlet('app-file-scan')) return array('*', '*', '*');
 
         try {
             list($minute, $hour, $day_of_month, $month, $day_of_week) 
-                = explode(' ', $cron->get_configlet('app-antivirus'), 5);
+                = explode(' ', $cron->get_configlet('app-file-scan'), 5);
         } catch (Engine_Exception $e) {
             throw new Engine_Exception($e->get_message(), CLEAROS_ERROR);
         }
@@ -567,25 +670,22 @@ class File_Scan extends Engine
     {
         clearos_profile(__METHOD__, __LINE__);
 
-        if (!file_exists(File_Scan::FILE_STATE)) {
-            throw new Engine_Exception(ANTIVIRUS_LANG_STATE_ERROR, CLEAROS_ERROR);
-        }
+        if (!file_exists(File_Scan::FILE_STATE))
+            throw new Engine_Exception(lang('file_scan_state_error'), CLEAROS_ERROR);
 
         // XXX: Here we use fopen rather than the File class.  This is because the File
         // class provides us with no way to do file locking (flock).  The state file
         // is therefore owned by webconfig so that we can manipulate it's contents.
-        if (!($fh = @fopen(File_Scan::FILE_STATE, 'a+'))) {
-            throw new Engine_Exception(ANTIVIRUS_LANG_STATE_ERROR, CLEAROS_ERROR);
-        }
+        if (!($fh = @fopen(File_Scan::FILE_STATE, 'a+')))
+            throw new Engine_Exception(lang('file_scan_state_error'), CLEAROS_ERROR);
 
         if ($this->unserialize_state($fh) === FALSE) {
             fclose($fh);
-            throw new Engine_Exception(ANTIVIRUS_LANG_STATE_ERROR, CLEAROS_ERROR);
+            throw new Engine_Exception(lang('file_scan_state_error'), CLEAROS_ERROR);
         }
 
-        if (!isset($this->state['virus'][$hash])) {
-            throw new Engine_Exception(ANTIVIRUS_LANG_FILE_NOT_FOUND, CLEAROS_ERROR);
-        }
+        if (!isset($this->state['virus'][$hash]))
+            throw new Engine_Exception(lang('base_file_not_found'), CLEAROS_ERROR);
 
         try {
             $virus = new File($this->state['virus'][$hash]['filename'], TRUE);
@@ -619,7 +719,7 @@ class File_Scan extends Engine
         $dirs = $this->get_directories();
 
         if (!count($dirs) || !in_array($dir, $dirs))
-            throw new Engine_Exception(ANTIVIRUS_LANG_DIR_NOT_FOUND, CLEAROS_ERROR);
+            throw new Engine_Exception(lang('base_file_not_found'), CLEAROS_ERROR);
 
         foreach ($dirs as $id => $entry) {
             if ($entry != $dir) continue;
@@ -628,7 +728,7 @@ class File_Scan extends Engine
             break;
         }
 
-        $file = new File(File_Scan::FILE_CONFIG);
+        $file = new File(self::FILE_SCAN_FOLDERS, TRUE);
 
         try {
             $file->dump_contents_from_array($dirs);
@@ -638,7 +738,7 @@ class File_Scan extends Engine
     }
 
     /**
-     * Removes an antivirus schedule.
+     * Removes an file scan schedule.
      *
      * @return void
      * @throws Engine_Exception
@@ -651,10 +751,28 @@ class File_Scan extends Engine
         $cron = new Cron();
 
         try {
-            if ($cron->exists_configlet('app-antivirus'))
-                $cron->delete_configlet('app-antivirus');
+            if ($cron->exists_configlet('app-file-scan'))
+                $cron->delete_configlet('app-file-scan');
         } catch (Engine_Exception $e) {
             throw new Engine_Exception($e->get_message(), CLEAROS_ERROR);
+        }
+    }
+
+    /**
+     * Deletes state
+     *
+     * @return void
+     */
+
+    public function delete_state()
+    {
+        clearos_profile(__METHOD__, __LINE__);
+        try {
+            $file = new File(self::FILE_STATE, FALSE);
+            if ($file->exists())
+                $file->delete();
+        } catch (Exception $e) {
+            throw new Engine_Exception(clearos_exception_message($e));
         }
     }
 
@@ -677,6 +795,7 @@ class File_Scan extends Engine
         $this->state['error'] = array();
         $this->state['virus'] = array();
         $this->state['timestamp'] = 0;
+        unset($this->state['stats']);
     }
 
     /**
@@ -717,20 +836,24 @@ class File_Scan extends Engine
 
         $cron = new Cron();
 
-        return $cron->exists_configlet('app-antivirus');
+        return $cron->exists_configlet('app-file-scan');
     }
 
     /**
      * Locks state file and writes serialized state.
      *
-     * @param string $fh file handle
+     * @param string $fh    file handle
+     * @param array  $state state
      *
      * @return boolean TRUE if method succeeds
      */
 
-    public function serialize_state($fh)
+    public function serialize_state($fh, $state = NULL)
     {
         clearos_profile(__METHOD__, __LINE__);
+
+        if ($state != NULL)
+            $this->state = $state;
 
         if (flock($fh, LOCK_EX) === FALSE)
             return FALSE;
@@ -759,7 +882,7 @@ class File_Scan extends Engine
     }
 
     /**
-     * Sets an antivirus schedule.
+     * Sets an file-scan schedule.
      *
      * @param string $minute     cron minute value
      * @param string $hour       cron hour value
@@ -778,7 +901,7 @@ class File_Scan extends Engine
         $cron = new Cron();
 
         $cron->add_configlet_by_parts(
-            'app-antivirus',
+            'app-file-scan',
             $minute, $hour, $dayofmonth, $month, $dayofweek,
             'root', self::FILE_AVSCAN . " >/dev/null 2>&1"
         );
@@ -797,6 +920,10 @@ class File_Scan extends Engine
 
         if ($this->is_scan_running())
             throw new Engine_Exception(lang('file_scan_scanner_already_running'));
+
+        $dirs = $this->get_directories();
+        if (empty($dirs))
+            throw new Engine_Exception(lang('file_scan_no_folders_selected'));
 
         $options = array();
         $options['background'] = TRUE;
@@ -867,6 +994,166 @@ class File_Scan extends Engine
 
         return TRUE;
     }
+
+    /**
+     * Get the notify on virus setting
+     *
+     * @return Boolean
+     */
+
+    function get_notify_on_virus()
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        if (!$this->is_loaded)
+            $this->_load_config();
+
+        $notify = $this->config['notify_on_virus'];
+
+        if ($notify == NULL || !$notify)
+            return FALSE;
+        else
+            return TRUE;
+    }
+
+    /**
+     * Get the notify on error setting
+     *
+     * @return Boolean
+     */
+
+    function get_notify_on_error()
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        if (!$this->is_loaded)
+            $this->_load_config();
+
+        $notify = $this->config['notify_on_error'];
+
+        if ($notify == NULL || !$notify)
+            return FALSE;
+        else
+            return TRUE;
+    }
+
+    /**
+     * Get the email notification.
+     *
+     * @return String
+     */
+
+    function get_notify_email()
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        if (!$this->is_loaded)
+            $this->_load_config();
+
+        $email = $this->config['notify-email'];
+
+        return $email;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////
+    // P R I V A T E   M E T H O D S
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * Loads configuration files.
+     *
+     * @return void
+     * @throws Engine_Exception
+     */
+
+    protected function _load_config()
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        $configfile = new Configuration_File(self::FILE_CONFIG);
+
+        try {
+            $this->config = $configfile->load();
+        } catch (Exception $e) {
+            throw new Engine_Exception(clearos_exception_message($e), CLEAROS_ERROR);
+        }
+
+        $this->is_loaded = TRUE;
+    }
+
+    /**
+     * Generic set routine.
+     *
+     * @param string $key   key name
+     * @param string $value value for the key
+     *
+     * @return  void
+     * @throws Engine_Exception
+     */
+
+    protected function _set_parameter($key, $value)
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        try {
+            $file = new File(self::FILE_CONFIG, TRUE);
+
+            if (!$file->exists())
+                $file->create('webconfig', 'webconfig', '0644');
+
+            $match = $file->replace_lines("/^$key\s*=\s*/", "$key=$value\n");
+
+            if (!$match)
+                $file->add_lines("$key=$value\n");
+        } catch (Exception $e) {
+            throw new Engine_Exception(clearos_exception_message($e), CLEAROS_ERROR);
+        }
+
+        $this->is_loaded = FALSE;
+    }
+
+    /**
+     * Validation routine for email.
+     *
+     * @param string $email email
+     *
+     * @return mixed void if email is valid, errmsg otherwise
+     */
+
+    public function validate_notify_email($email)
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        if (!preg_match("/^([a-zA-Z0-9])+([a-zA-Z0-9\._-])*@([a-zA-Z0-9_-])+([a-zA-Z0-9\._-]+)+$/", $email))
+            return lang('file_scan_email_invalid');
+    }
+
+    /**
+     * Validation routine for notify on virus.
+     *
+     * @param boolean $notify notify
+     *
+     * @return mixed void if notify on virus is valid, errmsg otherwise
+     */
+
+    public function validate_notify_on_virus($notify)
+    {
+        clearos_profile(__METHOD__, __LINE__);
+    }
+
+    /**
+     * Validation routine for notify on error.
+     *
+     * @param boolean $notify notify
+     *
+     * @return mixed void if notify on error is valid, errmsg otherwise
+     */
+
+    public function validate_notify_on_error($notify)
+    {
+        clearos_profile(__METHOD__, __LINE__);
+    }
+
 }
 
 // vi: ts=4

@@ -89,6 +89,8 @@ class Scan extends ClearOS_Controller
             $data['directories'] = $this->file_scan->get_directories();
             $data['presets'] = $this->file_scan->get_directory_presets();
             $data['schedule_exists'] = $this->file_scan->scan_schedule_exists();
+            $data['is_running'] = $this->file_scan->is_scan_running();
+
 
             $schedule = $this->file_scan->get_scan_schedule();
             $data['hour'] = $schedule['hour'];

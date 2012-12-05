@@ -27,3 +27,4 @@ $AVDIRS['/var/flexshare'] = lang('file_scan_flexshare');
 $AVDIRS['/var/www'] = lang('file_scan_web');
 $AVDIRS['/var/ftp'] = lang('file_scan_ftp');
 $AVDIRS['/var/spool/squid'] = lang('file_scan_web_proxy_cache');
+$AVDIRS['/var/spool/imap'] = lang('file_scan_mail');

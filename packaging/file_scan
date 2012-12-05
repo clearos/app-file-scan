@@ -48,8 +48,15 @@ clearos_load_language('file_scan');
 ///////////////////////////////////////////////////////////////////////////////
 
 use \clearos\apps\file_scan\File_Scan as File_Scan;
+use \clearos\apps\base\Configuration_File as Configuration_File;
+use \clearos\apps\network\Hostname as Hostname;
+use \clearos\apps\mail_notification\Mail_Notification as Mail_Notification;
 
 clearos_load_library('file_scan/File_Scan');
+clearos_load_library('base/Configuration_File');
+clearos_load_library('network/Hostname');
+clearos_load_library('mail_notification/Mail_Notification');
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // F U N C T I O N S
@@ -93,6 +100,25 @@ function unserialize_state($fh)
         fatal_error(1, 'State unserialization failure');
 }
 
+function send_email_notification($to_address, $body)
+{
+    $mailer = new Mail_Notification();
+    $hostname = new Hostname();
+    $mailer->set_message_subject(lang('file_scan_last_scan_result') . ' - ' . $hostname->get());
+    $mailer->set_message_body($body);
+    $mailer->add_recipient($to_address);
+    $sender = $mailer->get_sender();
+//    if (!strlen($sender))
+ //       $mailer->set_sender('root@' . $hostname->get());
+  //  else
+   //     $mailer->set_sender($sender);
+    try {
+        $mailer->send();
+    } catch (Exception $e) {
+echo $e->GetMessage();
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // M A I N
 ///////////////////////////////////////////////////////////////////////////////
@@ -104,11 +130,11 @@ register_shutdown_function('avscan_shutdown');
 set_error_handler('fatal_error');
 
 // Debug mode?
-$debug = TRUE;
+$debug = FALSE;
 $ph = popen('/usr/bin/tty', 'r');
 list($tty) = chop(fgets($ph, 4096));
 pclose($ph);
-if ($tty != 'not a tty') $debug = true;
+if ($tty != 'not a tty') $debug = TRUE;
 
 // Must be run as root
 if (posix_getuid() != 0) {
@@ -145,7 +171,7 @@ fclose($fh);
 // Open configuration (list of directories to recursively scan).  Read it
 // into an array quicky in case webconfig writes over it (no file locking)
 $dirs = array();
-$fh = @fopen(File_Scan::FILE_CONFIG, 'r');
+$fh = @fopen(File_Scan::FILE_SCAN_FOLDERS, 'r');
 
 while (!feof($fh)) {
     $dir = chop(fgets($fh, 4096));
@@ -163,6 +189,29 @@ chmod(File_Scan::FILE_STATE, 0750);
 unserialize_state($fh);
 $av_state['timestamp'] = time();
 serialize_state($fh);
+
+// Override configuration parameters of clam scan
+$configfile = new Configuration_File(File_Scan::FILE_CONFIG);
+
+// Defaults
+$clam_scan_options = '';
+$notify_email_address = NULL;
+
+if ($configfile->exists()) {
+    try {
+        $options = $configfile->load();
+        foreach ($options as $param => $value) {
+            if ($param == 'max-filesize')
+                $clam_scan_options .= " --$param=$value";
+            elseif ($param == 'max-scansize')
+                $clam_scan_options .= " --$param=$value";
+            elseif ($param == 'notify-email')
+                $notify_email_address = $value;
+        }
+    } catch (Exception $e) {
+        // Use safe defaults
+    }
+}
 
 // Scan each directory for: THE VIRUSES!
 foreach ($dirs as $dir) {
@@ -185,14 +234,42 @@ foreach ($dirs as $dir) {
 
     // Run scanner...
     if ($debug) echo("Scanning directory: $safe_dir\n");
-    $ph = popen(File_Scan::FILE_CLAMSCAN . " --stdout -r $safe_dir 2>/dev/null", 'r');
+
+    putenv('LANG=en_US');
+    $ph = popen(File_Scan::FILE_CLAMSCAN . " --stdout $clam_scan_options -r $safe_dir 2>/dev/null", 'r');
 
     while (!feof($ph)) {
         $buffer = fgets($ph, 4096);
-        if (($pos = strrpos($buffer, ':')) === false) break;
+        // Is this a good idea?
+        if (($pos = strrpos($buffer, ':')) === FALSE)
+            continue;
+
+        $match = NULL;
+        if (preg_match('/^Known viruses:\s*(\d+)$/', $buffer, $match))
+            $av_state['stats']['known_viruses'] = $match[1]; 
+        else if (preg_match('/^Engine version:\s*(.*)$/', $buffer, $match))
+            $av_state['stats']['engine_version'] = $match[1]; 
+        else if (preg_match('/^Scanned directories:\s*(\d+)$/', $buffer, $match))
+            $av_state['stats']['scanned_dirs'] = $match[1]; 
+        else if (preg_match('/^Scanned files:\s*(\d+)$/', $buffer, $match))
+            $av_state['stats']['scanned_files'] = $match[1]; 
+        else if (preg_match('/^Infected files:\s*(\d+)$/', $buffer, $match))
+            $av_state['stats']['infected_files'] = $match[1]; 
+        else if (preg_match('/^Data scanned:\s*(.*)$/', $buffer, $match))
+            $av_state['stats']['data_scanned'] = $match[1]; 
+        else if (preg_match('/^Data read:\s*(.*)\s+\(ratio.*\)$/', $buffer, $match))
+            $av_state['stats']['data_read'] = $match[1]; 
+        else if (preg_match('/^Time:\s*(.*)\s+sec\s+\(.*\)$/', $buffer, $match))
+            $av_state['stats']['time'] = $match[1]; 
 
         // Sync our state file, may have been modified externally...
         unserialize_state($fh);
+
+        if ($match != NULL) {
+            // No need to go further..not a file reference
+            serialize_state($fh);
+            continue;
+        }
 
         $av_state['count']++;
 
@@ -204,30 +281,31 @@ foreach ($dirs as $dir) {
 
         // Evaluate result
         switch ($av_state['result']) {
-        case 'OK':
-        case 'Empty file':
-            break;
-        case 'ERROR':
-            // Remember files with errors...
-            $av_state['error'][$hash] = array(
-                'filename' => $av_state['filename'],
-                'error' => $av_state['result'], 
-                'timestamp' => time()
+            case 'OK':
+            case 'Empty file':
+                break;
+            case 'ERROR':
+                // Remember files with errors...
+                $av_state['error'][$hash] = array(
+                    'filename' => $av_state['filename'],
+                    'error' => $av_state['result'], 
+                    'timestamp' => time()
+                    );
+                break;
+            default:
+                // Virus found...
+                $av_state['virus'][$hash] = array(
+                    'filename' => $av_state['filename'],
+                    'virus' => str_replace(' FOUND', '', $av_state['result']),
+                    'dir' => $dir, 'timestamp' => time()
                 );
-            break;
-        default:
-            // Virus found...
-            $av_state['virus'][$hash] = array(
-                'filename' => $av_state['filename'],
-                'virus' => str_replace(' FOUND', '', $av_state['result']),
-                'dir' => $dir, 'timestamp' => time()
-            );
-            break;
+                break;
         }
 
         serialize_state($fh);
 
-        if ($debug) printf('%.02f: %s', $av_state['count'] * 100 / $av_state['total'], $buffer);
+        if ($debug)
+            printf('%.02f: %s', $av_state['count'] * 100 / $av_state['total'], $buffer);
     }
 
     $av_state['rc'] = pclose($ph);
@@ -237,4 +315,21 @@ foreach ($dirs as $dir) {
 
 fclose($fh);
 
+if ($notify_email_address != NULL && (isset($av_state['error']) || isset($av_state['virus']))) {
+echo 'Sending email to ' . $notify_email_address;
+    $dump = '';
+    if (isset($av_state['virus'])) {
+        $dump .= "The following infected files were found:\n";
+        foreach ($av_state['virus'] as $hash => $info)
+            $dump .= $info['filename'] . ":  " . $info['virus'] . "\n";
+    }
+    if (isset($av_state['error'])) {
+        $dump .= "The following errors occurred:\n";
+        foreach ($viruses as $hash => $info)
+            $dump .= $info['filename'] . ":  " . $info['error'] . "\n";
+    }
+    send_email_notification($notify_email_address, $dump);
+} else {
+echo 'NOT Sending email';
+}
 // vim: syntax=php

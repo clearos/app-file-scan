@@ -1,0 +1,1 @@
+0 2 * * * root /usr/sbin/file_scan >/dev/null 2>&1

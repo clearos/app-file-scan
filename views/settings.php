@@ -1,7 +1,7 @@
 <?php
 
 /**
- * System time manager view.
+ * File Scan settings view.
  *
  * @category   ClearOS
  * @package    File_Scan
@@ -44,11 +44,14 @@ if ($form_type === 'edit') {
     $read_only = FALSE;
     $buttons = array(
         form_submit_update('submit'),
-        anchor_cancel('/app/file_scan/settings')
+        anchor_cancel('/app/file_scan')
     );
 } else {
     $read_only = TRUE;
-    $buttons = array(anchor_edit('/app/file_scan/settings/edit'));
+    $buttons = array(
+        anchor_edit('/app/file_scan/settings/edit'),
+        anchor_cancel('/app/file_scan')
+    );
 }
 
 // Daily scan dropdown
@@ -71,13 +74,22 @@ echo form_header(lang('base_settings'));
 
 echo fieldset_header(lang('file_scan_schedule'));
 echo field_dropdown('hour', $hours, $hour, lang('file_scan_daily_scan'), $read_only);
-echo fieldset_footer(); 
+
+echo fieldset_header(lang('file_scan_email_notification'));
+echo field_checkbox('notify_on_virus', $notify_on_virus, lang('file_scan_notify_on_virus'), $read_only);
+echo field_checkbox('notify_on_error', $notify_on_error, lang('file_scan_notify_on_error'), $read_only);
+echo field_input('notify_email', $notify_email, lang('file_scan_email_address'), $read_only);
 
 echo fieldset_header(lang('file_scan_directories'));
 
 foreach ($presets as $directory => $description) {
     $selected = in_array($directory, $directories) ? TRUE : FALSE;
     echo field_checkbox("directories[$directory]", $selected, $description, $read_only);
+}
+$index = 1;
+foreach ($custom as $directory) {
+    echo field_input("custom-$index", $directory, lang('file_scan_custom') . " #$index", TRUE);
+    $index++;
 }
 
 echo fieldset_footer(); 

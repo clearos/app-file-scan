@@ -5,7 +5,7 @@
 /////////////////////////////////////////////////////////////////////////////
 
 $app['basename'] = 'file_scan';
-$app['version'] = '5.9.9.0';
+$app['version'] = '1.4.0';
 $app['release'] = '1';
 $app['vendor'] = 'ClearFoundation';
 $app['packager'] = 'ClearFoundation';
@@ -25,18 +25,37 @@ $app['subcategory'] = lang('base_subcategory_file');
 // Controllers
 /////////////////////////////////////////////////////////////////////////////
 
-$app['controllers']['pptpd']['title'] = $app['name'];
-$app['controllers']['settings']['title'] = lang('base_settings');
-
 /////////////////////////////////////////////////////////////////////////////
 // Packaging
 /////////////////////////////////////////////////////////////////////////////
 
 $app['core_requires'] = array(
     'app-tasks-core',
-    'webconfig-php-process'
+    'app-antivirus-core',
 );
 
 $app['core_directory_manifest'] = array(
     '/var/clearos/file_scan' => array(),
+);
+$app['core_file_manifest'] = array(
+   'file_scan' => array(
+        'target' => '/usr/sbin/file_scan',
+        'mode' => '0755',
+        'owner' => 'root',
+        'group' => 'root',
+    ),
+    'app-file-scan.cron' => array(
+        'target' => '/etc/cron.d/app-file-scan',
+        'mode' => '0644',
+        'owner' => 'root',
+        'group' => 'root',
+    ),
+   'file_scan.conf' => array(
+        'target' => '/etc/clearos/file_scan.conf',
+        'mode' => '0644',
+        'owner' => 'webconfig',
+        'group' => 'webconfig',
+        'config' => TRUE,
+        'config_params' => 'noreplace',
+    )
 );

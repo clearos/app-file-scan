@@ -36,6 +36,7 @@ $(document).ready(function() {
 
 	getData();
 
+    $('#notify_email').css('width', '250px');
 	function getData() {
         $.ajax({
             url: '/app/file_scan/scan/info',
@@ -43,24 +44,61 @@ $(document).ready(function() {
             dataType: 'json',
             success : function(json) {
 				showData(json);
-				window.setTimeout(getData, 2000);
+				window.setTimeout(getData, 1000);
             },
 			error: function (XMLHttpRequest, textStatus, errorThrown) {
 				$("#status").html('Ooops: ' + textStatus);
-				window.setTimeout(getData, 2000);
+				window.setTimeout(getData, 1000);
 			}
         });
 	}
 
 	function showData(info) {
-		$("#progress").progressbar({
-			value: Math.round(info.progress)
-		});
-		$("#state_text").html(info.state_text);
+        $('#progress').animate_progressbar(parseInt(info.progress));
+
+        if (info.state == 1)
+            $("#state_text").html('<div class=\'theme-loading-small\'>' + info.state_text + '</div>');
+        else
+            $("#state_text").html(info.state_text);
 		$("#status_text").html(info.status);
-		$("#error_count_text").html(info.error_count);
-		$("#malware_count_text").html(info.malware_count);
-		$("#last_result_text").html(info.last_result);
+        if (info.stats != undefined) {
+            $("#known_viruses_text").html(info.stats.known_viruses);
+            $("#known_viruses_field").show();
+            $("#engine_version_text").html(info.stats.engine_version);
+            $("#engine_version_field").show();
+            $("#scanned_dirs_text").html(info.stats.scanned_dirs);
+            $("#scanned_dirs_field").show();
+            $("#scanned_files_text").html(info.stats.scanned_files);
+            $("#scanned_files_field").show();
+            $("#infected_files_text").html(info.stats.infected_files);
+            $("#infected_files_field").show();
+            $("#data_scanned_text").html(info.stats.data_scanned);
+            $("#data_scanned_field").show();
+            $("#data_read_text").html(info.stats.data_read);
+            $("#data_read_field").show();
+            $("#data_read_text").html(info.stats.data_read);
+            $("#data_read_field").show();
+            $("#time_text").html(info.stats.time);
+            $("#time_field").show();
+            $("#stop").hide();
+        }
+        // Logs
+        if (info.virus != undefined && info.virus != null && $('#report').length > 0) {
+            table_report.fnClearTable();
+            $.each(info.virus, function() {
+                table_report.fnAddData([
+                    this.filename,
+                    this.virus
+                ]);
+            });
+            $.each(info.error, function() {
+                table_report.fnAddData([
+                    this.error,
+                    this.virus
+                ]);
+            });
+            table_report.fnAdjustColumnSizing();
+        }
 	}
 });
 

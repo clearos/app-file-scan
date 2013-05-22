@@ -4,9 +4,9 @@
 /**
  * Antivirus file scanner.
  *
- * @category   Apps
- * @package    File_Scan
- * @subpackage Scripts
+ * @category   apps
+ * @package    file-scan
+ * @subpackage scripts
  * @author     ClearFoundation <developer@clearfoundation.com>
  * @copyright  2011 ClearFoundation
  * @license    http://www.gnu.org/copyleft/gpl.html GNU General Public License version 3 or later

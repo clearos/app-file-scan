@@ -1,7 +1,7 @@
 
 Name: app-file-scan
 Epoch: 1
-Version: 1.4.1
+Version: 1.4.40
 Release: 1%{dist}
 Summary: Antimalware File Scan
 License: GPLv3

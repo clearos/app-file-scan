@@ -283,6 +283,7 @@ foreach ($dirs as $dir) {
         switch ($av_state['result']) {
             case 'OK':
             case 'Empty file':
+            case 'Symbolic link':
                 break;
             case 'ERROR':
                 // Remember files with errors...

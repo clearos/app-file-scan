@@ -15,12 +15,13 @@ Requires: app-base
 The File Scan app scans the server's file system for infected files.
 
 %package core
-Summary: Antimalware File Scan - APIs and install
+Summary: Antimalware File Scan - Core
 License: LGPLv3
 Group: ClearOS/Libraries
 Requires: app-base-core
 Requires: app-tasks-core
 Requires: app-antivirus-core
+Requires: app-mail-notification
 
 %description core
 The File Scan app scans the server's file system for infected files.

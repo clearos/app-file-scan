@@ -62,7 +62,7 @@ $hours = array('disabled' => lang('base_disabled'));
 for ($i = 0; $i < 24; $i++)
         $hours[$i] = sprintf('%02d:00', $i);
 
-if (! $hour)
+if (! is_numeric($hour))
     $hour = "disabled";
 
 ///////////////////////////////////////////////////////////////////////////////

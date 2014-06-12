@@ -22,7 +22,6 @@ $lang['file_scan_idle'] = 'Idle';
 $lang['file_scan_infected_files'] = 'Total Infected Files Found';
 $lang['file_scan_interrupted'] = 'Interrupted';
 $lang['file_scan_known_viruses'] = 'Total Signatures';
-$lang['file_scan_last_run'] = 'Last Run';
 $lang['file_scan_last_run'] = 'Last scanner run: %s';
 $lang['file_scan_last_scan_result'] = 'Last Scan Result';
 $lang['file_scan_mail'] = 'E-mail';

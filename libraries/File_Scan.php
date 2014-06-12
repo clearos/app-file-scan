@@ -919,7 +919,7 @@ class File_Scan extends Engine
         clearos_profile(__METHOD__, __LINE__);
 
         if ($this->is_scan_running())
-            throw new Engine_Exception(lang('file_scan_scanner_already_running'));
+            throw new Engine_Exception(lang('file_scan_file_scan_already_running'));
 
         $dirs = $this->get_directories();
         if (empty($dirs))

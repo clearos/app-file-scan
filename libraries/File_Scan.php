@@ -7,7 +7,7 @@
  * @package    file-scan
  * @subpackage libraries
  * @author     ClearFoundation <developer@clearfoundation.com>
- * @copyright  2006-2011 ClearFoundation
+ * @copyright  2006-2014 ClearFoundation
  * @license    http://www.gnu.org/copyleft/lgpl.html GNU Lesser General Public License version 3 or later
  * @link       http://www.clearfoundation.com/docs/developer/apps/file_scan/
  */
@@ -55,18 +55,20 @@ clearos_load_language('file_scan');
 // Classes
 //--------
 
+use \clearos\apps\base\Configuration_File as Configuration_File;
 use \clearos\apps\base\Engine as Engine;
 use \clearos\apps\base\File as File;
-use \clearos\apps\base\Configuration_File as Configuration_File;
 use \clearos\apps\base\Folder as Folder;
 use \clearos\apps\base\Shell as Shell;
+use \clearos\apps\file_scan\File_Scan as File_Scan;
 use \clearos\apps\tasks\Cron as Cron;
 
+clearos_load_library('base/Configuration_File');
 clearos_load_library('base/Engine');
 clearos_load_library('base/File');
-clearos_load_library('base/Configuration_File');
 clearos_load_library('base/Folder');
 clearos_load_library('base/Shell');
+clearos_load_library('file_scan/File_Scan');
 clearos_load_library('tasks/Cron');
 
 // Exceptions
@@ -91,7 +93,7 @@ clearos_load_library('base/Validation_Exception');
  * @package    file-scan
  * @subpackage libraries
  * @author     ClearFoundation <developer@clearfoundation.com>
- * @copyright  2006-2011 ClearFoundation
+ * @copyright  2006-2014 ClearFoundation
  * @license    http://www.gnu.org/copyleft/lgpl.html GNU Lesser General Public License version 3 or later
  * @link       http://www.clearfoundation.com/docs/developer/apps/file_scan/
  */
@@ -182,19 +184,10 @@ class File_Scan extends Engine
 
         $file = new File(self::FILE_SCAN_FOLDERS, TRUE);
 
-        if (!$file->exists()) {
-            try {
-                $file->Create('root', 'root', '0644');
-            } catch (Engine_Exception $e) {
-                throw new Engine_Exception($e->get_message(), CLEAROS_ERROR);
-            }
-        }
+        if (!$file->exists())
+            $file->create('root', 'root', '0644');
 
-        try {
-            $file->dump_contents_from_array($dirs);
-        } catch (Engine_Exception $e) {
-            throw new Engine_Exception($e->get_message(), CLEAROS_ERROR);
-        }
+        $file->dump_contents_from_array($dirs);
     }
 
     /**
@@ -210,15 +203,11 @@ class File_Scan extends Engine
     {
         clearos_profile(__METHOD__, __LINE__);
 
-        try {
-            $nfo = new File(self::PATH_QUARANTINE . "/$hash.nfo", TRUE);
-            $nfo->Delete();
+        $nfo = new File(self::PATH_QUARANTINE . "/$hash.nfo", TRUE);
+        $nfo->Delete();
 
-            $dat = new File(self::PATH_QUARANTINE . "/$hash.dat", TRUE);
-            $dat->Delete();
-        } catch (Engine_Exception $e) {
-            throw new Engine_Exception($e->get_message(), CLEAROS_ERROR);
-        }
+        $dat = new File(self::PATH_QUARANTINE . "/$hash.dat", TRUE);
+        $dat->Delete();
     }
 
     /**
@@ -251,12 +240,8 @@ class File_Scan extends Engine
         if (!isset($this->state['virus'][$hash]))
             throw new Engine_Exception(lang('base_file_not_found'), CLEAROS_ERROR);
 
-        try {
-            $virus = new File($this->state['virus'][$hash]['filename'], TRUE);
-            $virus->Delete();
-        } catch (Engine_Exception $e) {
-            throw new Engine_Exception($e->get_message(), CLEAROS_ERROR);
-        }
+        $virus = new File($this->state['virus'][$hash]['filename'], TRUE);
+        $virus->delete();
 
         // Update state file, delete virus
         unset($this->state['virus'][$hash]);
@@ -577,21 +562,16 @@ class File_Scan extends Engine
             $files = $dir->get_listing();
         } catch (Folder_Not_Found_Exception $e) {
             return array();
-        } catch (Engine_Exception $e) {
-            throw new Engine_Exception($e->get_message(), CLEAROS_ERROR);
         }
 
         $viruses = array();
 
         foreach ($files as $file) {
-            if (stristr($file, '.nfo') === FALSE) continue;
+            if (stristr($file, '.nfo') === FALSE)
+                continue;
 
-            try {
-                $nfo = new File(File_Scan::PATH_QUARANTINE . "/$file", TRUE);
-                $buffer = unserialize($nfo->get_contents());
-            } catch (Engine_Exception $e) {
-                throw new Engine_Exception($e->get_message(), CLEAROS_ERROR);
-            }
+            $nfo = new File(File_Scan::PATH_QUARANTINE . "/$file", TRUE);
+            $buffer = unserialize($nfo->get_contents());
 
             $viruses[md5($buffer['filename'])] = $buffer;
         }
@@ -617,12 +597,8 @@ class File_Scan extends Engine
 
         if (!$cron->exists_configlet('app-file-scan')) return array('*', '*', '*');
 
-        try {
-            list($minute, $hour, $day_of_month, $month, $day_of_week) 
-                = explode(' ', $cron->get_configlet('app-file-scan'), 5);
-        } catch (Engine_Exception $e) {
-            throw new Engine_Exception($e->get_message(), CLEAROS_ERROR);
-        }
+        list($minute, $hour, $day_of_month, $month, $day_of_week) 
+            = explode(' ', $cron->get_configlet('app-file-scan'), 5);
 
         $schedule['hour'] = $hour;
         $schedule['day_of_month'] = $day_of_month;
@@ -687,16 +663,12 @@ class File_Scan extends Engine
         if (!isset($this->state['virus'][$hash]))
             throw new Engine_Exception(lang('base_file_not_found'), CLEAROS_ERROR);
 
-        try {
-            $virus = new File($this->state['virus'][$hash]['filename'], TRUE);
-            $virus->move_to(File_Scan::PATH_QUARANTINE . "/$hash.dat");
-            $virus = new File(File_Scan::PATH_QUARANTINE . "/$hash.nfo");
+        $virus = new File($this->state['virus'][$hash]['filename'], TRUE);
+        $virus->move_to(File_Scan::PATH_QUARANTINE . "/$hash.dat");
+        $virus = new File(File_Scan::PATH_QUARANTINE . "/$hash.nfo");
 
-            $virus->create('webconfig', 'webconfig', '0640');
-            $virus->add_lines(serialize($this->state['virus'][$hash]));
-        } catch (Engine_Exception $e) {
-            throw new Engine_Exception($e->get_message(), CLEAROS_ERROR);
-        }
+        $virus->create('webconfig', 'webconfig', '0640');
+        $virus->add_lines(serialize($this->state['virus'][$hash]));
 
         // Update state file, delete virus
         unset($this->state['virus'][$hash]);
@@ -730,11 +702,7 @@ class File_Scan extends Engine
 
         $file = new File(self::FILE_SCAN_FOLDERS, TRUE);
 
-        try {
-            $file->dump_contents_from_array($dirs);
-        } catch (Engine_Exception $e) {
-            throw new Engine_Exception($e->get_message(), CLEAROS_ERROR);
-        }
+        $file->dump_contents_from_array($dirs);
     }
 
     /**
@@ -750,12 +718,8 @@ class File_Scan extends Engine
 
         $cron = new Cron();
 
-        try {
-            if ($cron->exists_configlet('app-file-scan'))
-                $cron->delete_configlet('app-file-scan');
-        } catch (Engine_Exception $e) {
-            throw new Engine_Exception($e->get_message(), CLEAROS_ERROR);
-        }
+        if ($cron->exists_configlet('app-file-scan'))
+            $cron->delete_configlet('app-file-scan');
     }
 
     /**
@@ -767,13 +731,10 @@ class File_Scan extends Engine
     public function delete_state()
     {
         clearos_profile(__METHOD__, __LINE__);
-        try {
-            $file = new File(self::FILE_STATE, FALSE);
-            if ($file->exists())
-                $file->delete();
-        } catch (Exception $e) {
-            throw new Engine_Exception(clearos_exception_message($e));
-        }
+
+        $file = new File(self::FILE_STATE, FALSE);
+        if ($file->exists())
+            $file->delete();
     }
 
     /**
@@ -795,6 +756,7 @@ class File_Scan extends Engine
         $this->state['error'] = array();
         $this->state['virus'] = array();
         $this->state['timestamp'] = 0;
+
         unset($this->state['stats']);
     }
 
@@ -811,16 +773,12 @@ class File_Scan extends Engine
     {
         clearos_profile(__METHOD__, __LINE__);
 
-        try {
-            $nfo = new File(File_Scan::PATH_QUARANTINE . "/$hash.nfo", TRUE);
-            $virus = unserialize($nfo->get_contents());
+        $nfo = new File(File_Scan::PATH_QUARANTINE . "/$hash.nfo", TRUE);
+        $virus = unserialize($nfo->get_contents());
 
-            $dat = new File(File_Scan::PATH_QUARANTINE . "/$hash.dat", TRUE);
-            $dat->move_to($virus['filename']);
-            $nfo->delete();
-        } catch (Engine_Exception $e) {
-            throw new Engine_Exception($e->get_message(), CLEAROS_ERROR);
-        }
+        $dat = new File(File_Scan::PATH_QUARANTINE . "/$hash.dat", TRUE);
+        $dat->move_to($virus['filename']);
+        $nfo->delete();
     }
 
     /**
@@ -1072,11 +1030,7 @@ class File_Scan extends Engine
 
         $configfile = new Configuration_File(self::FILE_CONFIG);
 
-        try {
-            $this->config = $configfile->load();
-        } catch (Exception $e) {
-            throw new Engine_Exception(clearos_exception_message($e), CLEAROS_ERROR);
-        }
+        $this->config = $configfile->load();
 
         $this->is_loaded = TRUE;
     }
@@ -1095,19 +1049,15 @@ class File_Scan extends Engine
     {
         clearos_profile(__METHOD__, __LINE__);
 
-        try {
-            $file = new File(self::FILE_CONFIG, TRUE);
+        $file = new File(self::FILE_CONFIG, TRUE);
 
-            if (!$file->exists())
-                $file->create('webconfig', 'webconfig', '0644');
+        if (!$file->exists())
+            $file->create('webconfig', 'webconfig', '0644');
 
-            $match = $file->replace_lines("/^$key\s*=\s*/", "$key=$value\n");
+        $match = $file->replace_lines("/^$key\s*=\s*/", "$key=$value\n");
 
-            if (!$match)
-                $file->add_lines("$key=$value\n");
-        } catch (Exception $e) {
-            throw new Engine_Exception(clearos_exception_message($e), CLEAROS_ERROR);
-        }
+        if (!$match)
+            $file->add_lines("$key=$value\n");
 
         $this->is_loaded = FALSE;
     }

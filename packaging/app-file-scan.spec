@@ -1,7 +1,7 @@
 
 Name: app-file-scan
 Epoch: 1
-Version: 1.4.41
+Version: 1.6.5
 Release: 1%{dist}
 Summary: Antimalware File Scan
 License: GPLv3
@@ -12,7 +12,7 @@ Requires: %{name}-core = 1:%{version}-%{release}
 Requires: app-base
 
 %description
-The File Scan app scans the server's file system for infected files.
+The File Scan app scans the server for infected files.
 
 %package core
 Summary: Antimalware File Scan - Core
@@ -24,7 +24,7 @@ Requires: app-antivirus-core
 Requires: app-mail-notification
 
 %description core
-The File Scan app scans the server's file system for infected files.
+The File Scan app scans the server for infected files.
 
 This package provides the core API and libraries.
 

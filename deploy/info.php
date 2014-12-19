@@ -32,7 +32,7 @@ $app['subcategory'] = lang('base_subcategory_file');
 $app['core_requires'] = array(
     'app-tasks-core',
     'app-antivirus-core',
-    'app-mail-notification',
+    'app-mail-notification-core',
 );
 
 $app['core_directory_manifest'] = array(

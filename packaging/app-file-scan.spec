@@ -21,7 +21,7 @@ Group: ClearOS/Libraries
 Requires: app-base-core
 Requires: app-tasks-core
 Requires: app-antivirus-core
-Requires: app-mail-notification
+Requires: app-mail-notification-core
 
 %description core
 The File Scan app scans the server for infected files.

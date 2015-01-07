@@ -36,7 +36,6 @@ $(document).ready(function() {
 
 	getData();
 
-    $('#notify_email').css('width', '250px');
 	function getData() {
         $.ajax({
             url: '/app/file_scan/scan/info',
@@ -54,14 +53,16 @@ $(document).ready(function() {
 	}
 
 	function showData(info) {
-        $('#progress').animate_progressbar(parseInt(info.progress));
+        clearos_set_progress_bar('progress', parseInt(info.progress), null);
 
         if (info.state == 1)
             $("#state_text").html('<div class=\'theme-loading-small\'>' + info.state_text + '</div>');
         else
             $("#state_text").html(info.state_text);
+
 		$("#status_text").html(info.status);
-        if (info.stats != undefined) {
+
+        if ((info.stats != undefined) && (info.state != 1)) {
             $("#known_viruses_text").html(info.stats.known_viruses);
             $("#known_viruses_field").show();
             $("#engine_version_text").html(info.stats.engine_version);
@@ -80,20 +81,25 @@ $(document).ready(function() {
             $("#data_read_field").show();
             $("#time_text").html(info.stats.time);
             $("#time_field").show();
+        }
+
+        if ((info.state == 1)) {
+            $("#settings").hide();
+            $("#start").hide();
+            $("#stop").show();
+        } else {
+            $("#settings").show();
+            $("#start").show();
             $("#stop").hide();
         }
+
         // Logs
         if (info.virus != undefined && info.virus != null && $('#report').length > 0) {
+            table_report = get_table_report();
             table_report.fnClearTable();
             $.each(info.virus, function() {
                 table_report.fnAddData([
                     this.filename,
-                    this.virus
-                ]);
-            });
-            $.each(info.error, function() {
-                table_report.fnAddData([
-                    this.error,
                     this.virus
                 ]);
             });

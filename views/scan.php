@@ -41,14 +41,15 @@ $this->lang->load('file_scan');
 ///////////////////////////////////////////////////////////////////////////////
 
 $read_only = TRUE;
-$buttons = array(
-    form_submit_custom('start', lang('base_start'))
+
+$buttons_off = array(
+    form_submit_custom('start', lang('base_start'), 'high', array('id' => 'start')),
+    anchor_custom('/app/file_scan/settings/edit', lang('base_settings'), 'high', array('id' => 'settings'))
 );
 
-if ($is_running)
-    $buttons[] = form_submit_custom('stop', lang('base_stop'), 'high', array('id' => 'stop'));
-else
-    $buttons[] = anchor_custom('/app/file_scan/settings', lang('base_settings'));
+$buttons_on = array(
+    form_submit_custom('stop', lang('base_stop'), 'high', array('id' => 'stop')),
+);
 
 ///////////////////////////////////////////////////////////////////////////////
 // Form
@@ -61,14 +62,14 @@ echo field_input('state', $state, lang('base_state'), $read_only);
 echo field_input('status', $status, lang('base_status'), $read_only);
 echo field_progress_bar(lang('file_scan_progress'), 'progress');
 echo field_input('known_viruses', '---', lang('file_scan_known_viruses'), $read_only, array('hide_field' => TRUE));
-echo field_input('engine_version', '---', lang('file_scan_engine_version'), $read_only, array('hide_field' => TRUE));
 echo field_input('scanned_dirs', '---', lang('file_scan_total_dirs_scanned'), $read_only, array('hide_field' => TRUE));
 echo field_input('scanned_files', '---', lang('file_scan_total_files_scanned'), $read_only, array('hide_field' => TRUE));
 echo field_input('infected_files', '---', lang('file_scan_infected_files'), $read_only, array('hide_field' => TRUE));
 echo field_input('data_scanned', '---', lang('file_scan_data_scanned'), $read_only, array('hide_field' => TRUE));
 echo field_input('data_read', '---', lang('file_scan_data_read'), $read_only, array('hide_field' => TRUE));
 echo field_input('time', '---', lang('file_scan_time'), $read_only, array('hide_field' => TRUE));
-echo field_button_set($buttons);
+echo field_button_set($buttons_off);
+echo field_button_set($buttons_on);
 
 echo form_footer();
 echo form_close();

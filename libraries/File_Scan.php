@@ -110,6 +110,9 @@ class File_Scan extends Engine
     // Antivirus scanner (wrapper)
     const FILE_AVSCAN = '/usr/sbin/file_scan';
 
+    // Antivirus scanner (basename)
+    const BASENAME_AVSCAN = 'file_scan';
+
     // List of directories to scan for viruses.
     const FILE_SCAN_FOLDERS = '/etc/avscan.conf';
 
@@ -906,7 +909,7 @@ class File_Scan extends Engine
         $options = array();
         $options['background'] = TRUE;
         $shell = new Shell();
-        $shell->execute(self::CMD_KILLALL, self::FILE_AVSCAN, TRUE, $options);
+        $shell->execute(self::CMD_KILLALL, self::BASENAME_AVSCAN, TRUE, $options);
     }
 
     /**

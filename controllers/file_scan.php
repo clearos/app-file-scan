@@ -73,10 +73,7 @@ class File_Scan extends ClearOS_Controller
         // Load views
         //-----------
 
-        if ($this->file_scan->is_scan_running())
-            $views = array('file_scan/scan', 'file_scan/settings');
-        else
-            $views = array('file_scan/scan', 'file_scan/report');
+        $views = array('file_scan/scan', 'file_scan/report');
 
         $this->page->view_forms($views, lang('file_scan_app_name'));
     }

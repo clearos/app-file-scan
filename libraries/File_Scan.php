@@ -1077,6 +1077,9 @@ class File_Scan extends Engine
     {
         clearos_profile(__METHOD__, __LINE__);
 
+        if ($email == "")
+            return;
+
         if (!preg_match("/^([a-zA-Z0-9])+([a-zA-Z0-9\._-])*@([a-zA-Z0-9_-])+([a-zA-Z0-9\._-]+)+$/", $email))
             return lang('file_scan_email_invalid');
     }

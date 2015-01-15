@@ -1,8 +1,8 @@
 <?php
 
 $lang['file_scan_antimalware'] = 'Antimalware';
-$lang['file_scan_app_description'] = 'The File Scan app scans the server for infected files.';
-$lang['file_scan_app_name'] = 'Antimalware File Scan';
+$lang['file_scan_app_description'] = 'The File Scanner app scans the server for infected files.';
+$lang['file_scan_app_name'] = 'Antimalware File Scanner';
 $lang['file_scan_clear'] = 'Clear Report';
 $lang['file_scan_currently_scanning'] = 'Currently scanning %s';
 $lang['file_scan_custom'] = 'Custom';

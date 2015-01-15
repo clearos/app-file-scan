@@ -3,7 +3,7 @@ Name: app-file-scan
 Epoch: 1
 Version: 2.0.14
 Release: 1%{dist}
-Summary: Antimalware File Scan
+Summary: Antimalware File Scanner
 License: GPLv3
 Group: ClearOS/Apps
 Source: %{name}-%{version}.tar.gz
@@ -12,10 +12,10 @@ Requires: %{name}-core = 1:%{version}-%{release}
 Requires: app-base
 
 %description
-The File Scan app scans the server for infected files.
+The File Scanner app scans the server for infected files.
 
 %package core
-Summary: Antimalware File Scan - Core
+Summary: Antimalware File Scanner - Core
 License: LGPLv3
 Group: ClearOS/Libraries
 Requires: app-base-core
@@ -24,7 +24,7 @@ Requires: app-antivirus-core
 Requires: app-mail-notification-core
 
 %description core
-The File Scan app scans the server for infected files.
+The File Scanner app scans the server for infected files.
 
 This package provides the core API and libraries.
 

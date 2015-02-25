@@ -1,13 +1,13 @@
 <?php
 
 /**
- * File scan report.
+ * Quarantine summary.
  *
  * @category   apps
- * @package    file-scan
+ * @package    file_scan
  * @subpackage views
  * @author     ClearFoundation <developer@clearfoundation.com>
- * @copyright  2011 ClearFoundation
+ * @copyright  2015 ClearFoundation
  * @license    http://www.gnu.org/copyleft/gpl.html GNU General Public License version 3 or later
  * @link       http://www.clearfoundation.com/docs/developer/apps/file_scan/
  */
@@ -33,44 +33,58 @@
 // Load dependencies
 ///////////////////////////////////////////////////////////////////////////////
 
-$this->lang->load('base');
 $this->lang->load('file_scan');
-
-///////////////////////////////////////////////////////////////////////////////
-// Buttons
-///////////////////////////////////////////////////////////////////////////////
-
-if ($is_running) {
-    $buttons = NULL;
-} else {
-    $buttons = array(
-        anchor_custom(
-            '/app/file_scan/report/clear', lang('file_scan_clear'), 'high'
-        )
-    );
-}
 
 ///////////////////////////////////////////////////////////////////////////////
 // Headers
 ///////////////////////////////////////////////////////////////////////////////
 
 $headers = array(
-        lang('base_filename'),
-        lang('file_scan_virus_or_note')
+    lang('base_filename'),
+    lang('base_timestamp')
 );
 
 ///////////////////////////////////////////////////////////////////////////////
-// List table
+// Items
 ///////////////////////////////////////////////////////////////////////////////
 
-echo form_open('file_scan');
+foreach ($files as $virus) {
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Item buttons
+    ///////////////////////////////////////////////////////////////////////////
+
+    $anchors = button_set(
+        array(
+            anchor_delete('/app/file_scan/quarantine/delete/' . md5($virus['name']), 'high')
+        )
+    );
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Item details
+    ///////////////////////////////////////////////////////////////////////////
+
+    $item['title'] = $virus['filename'];
+    $item['action'] = NULL;
+    $item['anchors'] = $anchors;
+    $item['details'] = array(
+        preg_replace('/\.[0-9]{6}_[0-9]{6}$/', '', $virus['name']),
+        date('F d, Y @ h:m', $virus['modified']),
+    );
+
+    $items[] = $item;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Summary table
+///////////////////////////////////////////////////////////////////////////////
+
+$options['default_rows'] = 100;
 
 echo summary_table(
-    lang('file_scan_last_scan_result'),
-    $buttons,
-    $headers,
+    lang('file_scan_quarantine'),
     NULL,
-    array('id' => 'report', 'sort' => FALSE, 'paginate' => TRUE)
+    $headers,
+    $items,
+    $options
 );
-
-echo form_close();

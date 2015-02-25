@@ -29,8 +29,26 @@
 //  
 //////////////////////////////////////////////////////////////////////////////
 
+///////////////////////////////////////////////////////////////////////////////
+// B O O T S T R A P
+///////////////////////////////////////////////////////////////////////////////
+
+$bootstrap = getenv('CLEAROS_BOOTSTRAP') ? getenv('CLEAROS_BOOTSTRAP') : '/usr/clearos/framework/shared';
+require_once $bootstrap . '/bootstrap.php';
+
+///////////////////////////////////////////////////////////////////////////////
+// T R A N S L A T I O N S
+///////////////////////////////////////////////////////////////////////////////
+
+clearos_load_language('base');
+clearos_load_language('file_scan');
+
 header('Content-Type:application/x-javascript');
 ?>
+
+var lang_delete = '<?php echo lang('base_delete'); ?>';
+var lang_quarantine = '<?php echo lang('file_scan_quarantine'); ?>';
+var lang_moved_to_quarantine = '<?php echo lang('file_scan_moved_to_quarantine'); ?>';
 
 $(document).ready(function() {
 
@@ -83,23 +101,39 @@ $(document).ready(function() {
             $("#stop").hide();
         }
         // Logs
-        if (info.virus != undefined && info.virus != null && $('#report').length > 0) {
+        if ($('#report').length > 0) {
             table_report.fnClearTable();
-            $.each(info.virus, function() {
-                table_report.fnAddData([
-                    this.filename,
-                    this.virus
-                ]);
-            });
-            $.each(info.error, function() {
-                table_report.fnAddData([
-                    this.error,
-                    this.virus
-                ]);
-            });
+            if (info.virus != undefined && info.virus != null) {
+                $.each(info.virus, function(virushash) {
+                    table_report.fnAddData([
+                        this.filename,
+                        this.virus,
+                        (this.quarantined ? lang_moved_to_quarantine : action_buttons(virushash))
+                    ]);
+                });
+            }
+            if (info.error != undefined && info.error != null) {
+                $.each(info.error, function() {
+                    table_report.fnAddData([
+                        this.error,
+                        this.virus,
+                        ''
+                    ]);
+                });
+            }
             table_report.fnAdjustColumnSizing();
+            $("#report tr:eq(1) td").css('line-height','20px');
         }
 	}
 });
+
+function action_buttons(virushash) {
+    
+    return '<div class=\'theme-button-set ui-button-set\'>' +
+        '<a href=\'/app/file_scan/scan/delete/' + virushash + '\' class=\'theme-button-set-first theme-anchor theme-anchor-edit theme-anchor-important\'>' + lang_delete + '</a>' +
+        '<a href=\'/app/file_scan/scan/quarantine/' + virushash + '\' class=\'theme-button-set-last theme-anchor theme-anchor-edit theme-anchor-important\'>' + lang_quarantine + '</a>' +
+        '</div>';
+}
+
 
 // vim: ts=4 syntax=javascript

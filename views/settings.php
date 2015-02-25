@@ -75,6 +75,9 @@ echo form_header(lang('base_settings'));
 echo fieldset_header(lang('file_scan_schedule'));
 echo field_dropdown('hour', $hours, $hour, lang('file_scan_daily_scan'), $read_only);
 
+echo fieldset_header(lang('file_scan_actions'));
+echo field_checkbox('quarantine', $quarantine, lang('file_scan_quarantine_on_find'), $read_only);
+
 echo fieldset_header(lang('file_scan_email_notification'));
 echo field_checkbox('notify_on_virus', $notify_on_virus, lang('file_scan_notify_on_virus'), $read_only);
 echo field_checkbox('notify_on_error', $notify_on_error, lang('file_scan_notify_on_error'), $read_only);

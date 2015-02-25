@@ -135,4 +135,38 @@ class Scan extends ClearOS_Controller
         $this->output->set_header("Content-Type: application/json");
         $this->output->set_output(json_encode($data));
     }
+
+    /**
+     * File Scan delete file controller
+     *
+     * @return view
+     */
+
+    function delete($id)
+    {
+        // Load libraries
+        //---------------
+        $this->load->library('file_scan/File_Scan');
+
+        $this->file_scan->delete_virus($id);
+        $this->page->set_message(lang('file_scan_virus_deleted'), 'info');
+        redirect('file_scan');
+    }
+
+    /**
+     * File Scan quarantine file controller
+     *
+     * @return view
+     */
+
+    function quarantine($id)
+    {
+        // Load libraries
+        //---------------
+        $this->load->library('file_scan/File_Scan');
+
+        $this->file_scan->quarantine_virus($id);
+        $this->page->set_message(lang('file_scan_virus_quarantined'), 'info');
+        //redirect('file_scan');
+    }
 }

@@ -7,7 +7,7 @@
  * @package    file-scan
  * @subpackage controllers
  * @author     ClearFoundation <developer@clearfoundation.com>
- * @copyright  2011 ClearFoundation
+ * @copyright  2011-2015 ClearFoundation
  * @license    http://www.gnu.org/copyleft/gpl.html GNU General Public License version 3 or later
  * @link       http://www.clearfoundation.com/docs/developer/apps/file_scan/
  */
@@ -40,7 +40,7 @@
  * @package    file-scan
  * @subpackage controllers
  * @author     ClearFoundation <developer@clearfoundation.com>
- * @copyright  2011 ClearFoundation
+ * @copyright  2011-2015 ClearFoundation
  * @license    http://www.gnu.org/copyleft/gpl.html GNU General Public License version 3 or later
  * @link       http://www.clearfoundation.com/docs/developer/apps/file_scan/
  */
@@ -59,6 +59,7 @@ class Scan extends ClearOS_Controller
         //---------------
 
         $this->load->library('file_scan/File_Scan');
+        $this->lang->load('base');
         $this->lang->load('file_scan');
 
         // Handle form submit
@@ -72,10 +73,8 @@ class Scan extends ClearOS_Controller
                 $schedule_exists = $this->file_scan->scan_schedule_exists();
 
                 // Redirect to main page
-                /*
                 $this->page->set_success(lang('base_system_updated'));
                 redirect('/file_scan/');
-                */
             } catch (Exception $e) {
                 $this->page->view_exception($e);
                 return;
@@ -134,5 +133,56 @@ class Scan extends ClearOS_Controller
 
         $this->output->set_header("Content-Type: application/json");
         $this->output->set_output(json_encode($data));
+    }
+
+    /**
+     * File Scan delete file controller
+     *
+     * @return view
+     */
+
+    function delete($id)
+    {
+        // Load libraries
+        //---------------
+        $this->load->library('file_scan/File_Scan');
+
+        $this->file_scan->delete_virus($id);
+        $this->page->set_message(lang('file_scan_virus_deleted'), 'info');
+        redirect('file_scan');
+    }
+
+    /**
+     * File Scan quarantine file controller
+     *
+     * @return view
+     */
+
+    function quarantine($id)
+    {
+        // Load libraries
+        //---------------
+        $this->load->library('file_scan/File_Scan');
+
+        $this->file_scan->quarantine_virus($id);
+        $this->page->set_message(lang('file_scan_virus_quarantined'), 'info');
+        redirect('file_scan');
+    }
+ 
+    /**
+     * File Scan whitelist file controller
+     *
+     * @return view
+     */
+
+    function whitelist($id)
+    {
+        // Load libraries
+        //---------------
+        $this->load->library('file_scan/File_Scan');
+
+        $this->file_scan->whitelist($id);
+        $this->page->set_message(lang('file_scan_file_whitelisted'), 'info');
+        redirect('file_scan');
     }
 }

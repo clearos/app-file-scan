@@ -5,7 +5,7 @@
 /////////////////////////////////////////////////////////////////////////////
 
 $app['basename'] = 'file_scan';
-$app['version'] = '2.0.18';
+$app['version'] = '2.0.19';
 $app['release'] = '1';
 $app['vendor'] = 'ClearFoundation';
 $app['packager'] = 'ClearFoundation';
@@ -40,6 +40,7 @@ $app['core_requires'] = array(
 
 $app['core_directory_manifest'] = array(
     '/var/clearos/file_scan' => array(),
+    '/var/clearos/file_scan/quarantine' => array('mode' => '700', 'owner' => 'root', 'group' => 'root')
 );
 $app['core_file_manifest'] = array(
    'file_scan' => array(

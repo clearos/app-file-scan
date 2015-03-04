@@ -49,11 +49,13 @@ clearos_load_language('file_scan');
 
 use \clearos\apps\file_scan\File_Scan as File_Scan;
 use \clearos\apps\base\Configuration_File as Configuration_File;
+use \clearos\apps\base\File as File;
 use \clearos\apps\network\Hostname as Hostname;
 use \clearos\apps\mail_notification\Mail_Notification as Mail_Notification;
 
 clearos_load_library('file_scan/File_Scan');
 clearos_load_library('base/Configuration_File');
+clearos_load_library('base/File');
 clearos_load_library('network/Hostname');
 clearos_load_library('mail_notification/Mail_Notification');
 
@@ -108,14 +110,10 @@ function send_email_notification($to_address, $body)
     $mailer->set_message_body($body);
     $mailer->add_recipient($to_address);
     $sender = $mailer->get_sender();
-//    if (!strlen($sender))
- //       $mailer->set_sender('root@' . $hostname->get());
-  //  else
-   //     $mailer->set_sender($sender);
     try {
         $mailer->send();
     } catch (Exception $e) {
-echo $e->GetMessage();
+        echo $e->GetMessage();
     }
 }
 
@@ -196,6 +194,7 @@ $configfile = new Configuration_File(File_Scan::FILE_CONFIG);
 // Defaults
 $clam_scan_options = '';
 $notify_email_address = NULL;
+$quarantine = FALSE;
 
 if ($configfile->exists()) {
     try {
@@ -207,6 +206,8 @@ if ($configfile->exists()) {
                 $clam_scan_options .= " --$param=$value";
             elseif ($param == 'notify-email')
                 $notify_email_address = $value;
+            elseif ($param == 'quarantine')
+                $quarantine = (bool)$value;
         }
     } catch (Exception $e) {
         // Use safe defaults
@@ -218,7 +219,8 @@ foreach ($dirs as $dir) {
     $safe_dir = escapeshellarg($dir);
 
     $av_state['dir'] = $dir;
-    $av_state['filename'] = '-';
+    $av_state['filename'] = '';
+    $av_state['filename_with_path'] = '';
     $av_state['count'] = 0;
 
     serialize_state($fh);
@@ -236,7 +238,16 @@ foreach ($dirs as $dir) {
     if ($debug) echo("Scanning directory: $safe_dir\n");
 
     putenv('LANG=en_US');
-    $ph = popen(File_Scan::FILE_CLAMSCAN . " --stdout $clam_scan_options -r $safe_dir 2>/dev/null", 'r');
+    $file_scan = new File_Scan();
+    $whitelist = $file_scan->get_whitelist();
+    $whitelist_options = '';
+    if ($whitelist !== FALSE && !empty($whitelist)) {
+        foreach ($whitelist as $whitelisted_filename) {
+	    if (trim($whitelisted_filename) != '')
+		    $whitelist_options .= ' --exclude ' . $whitelisted_filename;
+	}
+    }
+    $ph = popen(File_Scan::FILE_CLAMSCAN . " --stdout $clam_scan_options $whitelist_options -r $safe_dir 2>/dev/null", 'r');
 
     while (!feof($ph)) {
         $buffer = fgets($ph, 4096);
@@ -285,6 +296,8 @@ foreach ($dirs as $dir) {
             case 'Empty file':
             case 'Symbolic link':
                 break;
+            case 'Excluded':
+                break;
             case 'ERROR':
                 // Remember files with errors...
                 $av_state['error'][$hash] = array(
@@ -297,9 +310,19 @@ foreach ($dirs as $dir) {
                 // Virus found...
                 $av_state['virus'][$hash] = array(
                     'filename' => $av_state['filename'],
+                    'filename_without_path' => basename($av_state['filename']),
+                    'path' => dirname($av_state['filename']),
                     'virus' => str_replace(' FOUND', '', $av_state['result']),
+                    'quarantined' => $quarantine,
                     'dir' => $dir, 'timestamp' => time()
                 );
+                if ($quarantine) {
+                    $file = new File($av_state['filename'] . '.' . date('ymd_His'), TRUE);
+                    if (!$file->exists())
+                        $file->create('root', 'root' , 600);
+                    $file->replace($av_state['filename']);
+                    $file->move_to(File_Scan::PATH_QUARANTINE);
+                }
                 break;
         }
 
@@ -317,10 +340,12 @@ foreach ($dirs as $dir) {
 fclose($fh);
 
 if ($notify_email_address != NULL && (isset($av_state['error']) || isset($av_state['virus']))) {
-echo 'Sending email to ' . $notify_email_address;
     $dump = '';
     if (isset($av_state['virus'])) {
-        $dump .= "The following infected files were found:\n";
+        if ($quarantine)
+            $dump .= "The following infected files were found and moved to quaranatine (" . File_Scan::PATH_QUARANTINE . "):\n\n";
+        else
+            $dump .= "The following infected files were found:\n\n";
         foreach ($av_state['virus'] as $hash => $info)
             $dump .= $info['filename'] . ":  " . $info['virus'] . "\n";
     }
@@ -330,7 +355,5 @@ echo 'Sending email to ' . $notify_email_address;
             $dump .= $info['filename'] . ":  " . $info['error'] . "\n";
     }
     send_email_notification($notify_email_address, $dump);
-} else {
-echo 'NOT Sending email';
 }
 // vim: syntax=php

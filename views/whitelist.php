@@ -1,13 +1,13 @@
 <?php
 
 /**
- * File scan report.
+ * Quarantine summary.
  *
  * @category   apps
- * @package    file-scan
+ * @package    file_scan
  * @subpackage views
  * @author     ClearFoundation <developer@clearfoundation.com>
- * @copyright  2011 ClearFoundation
+ * @copyright  2015 ClearFoundation
  * @license    http://www.gnu.org/copyleft/gpl.html GNU General Public License version 3 or later
  * @link       http://www.clearfoundation.com/docs/developer/apps/file_scan/
  */
@@ -33,53 +33,57 @@
 // Load dependencies
 ///////////////////////////////////////////////////////////////////////////////
 
-$this->lang->load('base');
 $this->lang->load('file_scan');
-
-///////////////////////////////////////////////////////////////////////////////
-// Buttons
-///////////////////////////////////////////////////////////////////////////////
-
-if ($is_running) {
-    $buttons = NULL;
-} else {
-    $buttons = array(
-        anchor_custom(
-            '/app/file_scan/report/clear', lang('file_scan_clear'), 'high'
-        )
-    );
-}
+$this->lang->load('network');
 
 ///////////////////////////////////////////////////////////////////////////////
 // Headers
 ///////////////////////////////////////////////////////////////////////////////
 
 $headers = array(
-        lang('base_filename'),
-        lang('file_scan_path'),
-        lang('file_scan_virus_or_note')
+    lang('base_filename')
 );
 
 ///////////////////////////////////////////////////////////////////////////////
-// List table
+// Items
 ///////////////////////////////////////////////////////////////////////////////
 
-echo form_open('file_scan');
+foreach ($files as $filename) {
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Item buttons
+    ///////////////////////////////////////////////////////////////////////////
+
+    $anchors = button_set(
+        array(
+            anchor_delete('/app/file_scan/whitelist/delete/' . md5($filename), 'high')
+        )
+    );
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Item details
+    ///////////////////////////////////////////////////////////////////////////
+
+    $item['title'] = $virus['filename'];
+    $item['action'] = NULL;
+    $item['anchors'] = $anchors;
+    $item['details'] = array(
+        trim($filename, '"')
+    );
+
+    $items[] = $item;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Summary table
+///////////////////////////////////////////////////////////////////////////////
+
+$options['default_rows'] = 100;
 
 echo summary_table(
-    lang('file_scan_last_scan_result'),
-    $buttons,
+    lang('file_scan_whitelist'),
+    anchor_cancel('/app/file_scan', 'high'),
     $headers,
-    NULL,
-    array(
-        'id' => 'report',
-        'sort' => FALSE,
-        'paginate' => TRUE,
-        'responsive' => array(
-            1 => 'none',
-            2 => 'min-tablet'
-        )
-    )
+    $items,
+    $options
 );
-
-echo form_close();

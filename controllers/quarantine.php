@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Antivirus file scan controller.
+ * File Scan quarantine controller.
  *
  * @category   apps
  * @package    file-scan
@@ -30,11 +30,15 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////////
+// D E P E N D E N C I E S
+///////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////
 // C L A S S
 ///////////////////////////////////////////////////////////////////////////////
 
 /**
- * Antivirus file scan controller.
+ * File Scan quarantine controller.
  *
  * @category   apps
  * @package    file-scan
@@ -45,36 +49,66 @@
  * @link       http://www.clearfoundation.com/docs/developer/apps/file_scan/
  */
 
-class File_Scan extends ClearOS_Controller
+class Quarantine extends ClearOS_Controller
 {
     /**
-     * File scan server overview.
-     * 
+     * Account import progress controller
+     *
      * @return view
      */
 
     function index()
     {
-        // Load libraries
-        //---------------
+        // Load dependencies
+        //------------------
 
         $this->lang->load('file_scan');
         $this->load->library('file_scan/File_Scan');
 
-        try {
-            if ($this->input->post('start'))
-                $this->file_scan->start_scan();
-            else if ($this->input->post('stop'))
-                $this->file_scan->stop_scan();
-        } catch (\Exception $e) {
-            $this->page->set_message(clearos_exception_message($e), 'warning');
-        }
+        // Load view data
+        //---------------
+
+        $data = array();
+
+        $data['files'] = $this->file_scan->get_quarantined_viruses();
 
         // Load views
         //-----------
 
-        $views = array('file_scan/scan', 'file_scan/report', 'file_scan/quarantine');
+        $this->page->view_form('quarantine', $data, lang('file_scan_quarantine'));
+    }
 
-        $this->page->view_forms($views, lang('file_scan_app_name'));
+    /**
+     * File Scan quarantine delete file controller
+     *
+     * @return void
+     */
+
+    function delete($id)
+    {
+        // Load libraries
+        //---------------
+        $this->load->library('file_scan/File_Scan');
+
+        $this->file_scan->delete_virus($id, TRUE);
+        $this->page->set_message(lang('file_scan_virus_deleted'), 'info');
+        redirect('file_scan');
+    }
+
+    /**
+     * File Scan quarantine whitelist file controller
+     *
+     * @return void
+     */
+
+    function whitelist($id)
+    {
+        // Load libraries
+        //---------------
+        $this->load->library('file_scan/File_Scan');
+
+        $this->file_scan->whitelist($id, TRUE);
+        $this->page->set_message(lang('file_scan_file_whitelisted'), 'info');
+        redirect('file_scan');
     }
 }

@@ -7,7 +7,7 @@
  * @package    file-scan
  * @subpackage libraries
  * @author     ClearFoundation <developer@clearfoundation.com>
- * @copyright  2006-2014 ClearFoundation
+ * @copyright  2006-2015 ClearFoundation
  * @license    http://www.gnu.org/copyleft/lgpl.html GNU Lesser General Public License version 3 or later
  * @link       http://www.clearfoundation.com/docs/developer/apps/file_scan/
  */
@@ -55,17 +55,17 @@ clearos_load_language('file_scan');
 // Classes
 //--------
 
-use \clearos\apps\base\Configuration_File as Configuration_File;
 use \clearos\apps\base\Engine as Engine;
 use \clearos\apps\base\File as File;
+use \clearos\apps\base\Configuration_File as Configuration_File;
 use \clearos\apps\base\Folder as Folder;
 use \clearos\apps\base\Shell as Shell;
 use \clearos\apps\file_scan\File_Scan as File_Scan;
 use \clearos\apps\tasks\Cron as Cron;
 
-clearos_load_library('base/Configuration_File');
 clearos_load_library('base/Engine');
 clearos_load_library('base/File');
+clearos_load_library('base/Configuration_File');
 clearos_load_library('base/Folder');
 clearos_load_library('base/Shell');
 clearos_load_library('file_scan/File_Scan');
@@ -129,7 +129,13 @@ class File_Scan extends Engine
     const FILE_STATE = '/var/clearos/framework/tmp/avscan.state';
 
     // Locating of quarantine directory
-    const PATH_QUARANTINE = '/var/lib/quarantine';
+    const PATH_QUARANTINE = '/var/clearos/file_scan/quarantine';
+
+    // Location of whitelist file
+    const FILE_WHITELIST = '/var/clearos/file_scan/whitelist';
+
+    // Location of quarantined files
+    const FILE_QUARANTINE_LIST = '/var/clearos/file_scan/quarantine_list';
 
     // Status
     const STATUS_IDLE = 0;    
@@ -194,37 +200,59 @@ class File_Scan extends Engine
     }
 
     /**
-     * Deletes a quarantined virus.
+     * Deletes an entry in the whitelist.
      *
-     * @param string $hash MD5 hash of virus filename to delete
+     * @param string  $hash          MD5 hash of virus filename to delete
      *
-     * @return void
      * @throws Engine_Exception
+     * @return void
      */
 
-    public function delete_quarantined_virus($hash)
+    public function delete_whitelist($hash)
     {
         clearos_profile(__METHOD__, __LINE__);
 
-        $nfo = new File(self::PATH_QUARANTINE . "/$hash.nfo", TRUE);
-        $nfo->Delete();
-
-        $dat = new File(self::PATH_QUARANTINE . "/$hash.dat", TRUE);
-        $dat->Delete();
+        $whitelist = new File(self::FILE_WHITELIST, TRUE);
+        if (!$whitelist->exists())
+            return;
+        $list = $whitelist->get_contents_as_array();
+        foreach ($list as $line) {
+            if (md5($line) == $hash) {
+                $whitelist->delete_lines("|^$line$|");
+                break;
+            }
+        }
     }
 
     /**
      * Deletes a virus.
      *
-     * @param string $hash MD5 hash of virus filename to delete
+     * @param string  $hash          MD5 hash of virus filename to delete
+     * @param boolean $in_quarantine boolean indicating whether file is in quarantine or not
      *
      * @throws Engine_Exception
      * @return void
      */
 
-    public function delete_virus($hash)
+    public function delete_virus($hash, $in_quarantine = FALSE)
     {
         clearos_profile(__METHOD__, __LINE__);
+
+        if ($in_quarantine) {
+            $list = $this->get_quarantined_viruses();
+            $quarantine = new File(self::FILE_QUARANTINE_LIST, TRUE);
+            foreach ($list as $file_hash => $meta) {
+                if ($file_hash == $hash) {
+                    $virus = new File(self::PATH_QUARANTINE . "/" . $meta['filename'], TRUE);
+                    if ($virus->exists())
+                        $virus->delete();
+                    if ($quarantine->exists())
+                        $quarantine->delete_lines("/^$hash.*/");
+                    break;
+                }
+            }
+            return;
+        }
 
         if (!file_exists(self::FILE_STATE))
             throw new Engine_Exception(lang('file_scan_state_error'), CLEAROS_ERROR);
@@ -244,7 +272,8 @@ class File_Scan extends Engine
             throw new Engine_Exception(lang('base_file_not_found'), CLEAROS_ERROR);
 
         $virus = new File($this->state['virus'][$hash]['filename'], TRUE);
-        $virus->delete();
+        if ($virus->exists())
+            $virus->delete();
 
         // Update state file, delete virus
         unset($this->state['virus'][$hash]);
@@ -489,6 +518,27 @@ class File_Scan extends Engine
     }
 
     /**
+     * Set the quarantine action
+     *
+     * @param boolean $quarantine quarantine
+     *
+     * @return void
+     * @throws Validation_Exception
+     */
+
+    function set_quarantine($quarantine)
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        Validation_Exception::is_valid($this->validate_quarantine($quarantine));
+
+        if ($quarantine === 'on' || $quarantine == 1 || $quarantine == TRUE)
+            $this->_set_parameter('quarantine', 1);
+        else
+            $this->_set_parameter('quarantine', 0);
+    }
+
+    /**
      * Set the notify on virus setting.
      *
      * @param boolean $notify notify
@@ -560,26 +610,30 @@ class File_Scan extends Engine
     {
         clearos_profile(__METHOD__, __LINE__);
 
+        $files = array();
         try {
-            $dir = new Folder(File_Scan::PATH_QUARANTINE, TRUE);
-            $files = $dir->get_listing();
+            $quarantine = new File(self::FILE_QUARANTINE_LIST, TRUE);
+            if (!$quarantine->exists())
+                return $files;
+
+            $list = $quarantine->get_contents_as_array();
+            foreach ($list as $line) {
+                list($md5, $filename, $folder, $extension) = preg_split('/\\|/', $line);
+                $virus = new File(self::PATH_QUARANTINE . "/" . $filename . $extension, TRUE);
+                if (!$virus->exists())
+                    continue;
+                $files[$md5] = array(
+                    'filename' => $filename,
+                    'folder' => $folder,
+                    'extension' => $extension,
+                    'timestamp' => $virus->last_modified()
+                );
+            }
         } catch (Folder_Not_Found_Exception $e) {
-            return array();
+            return $files;
         }
 
-        $viruses = array();
-
-        foreach ($files as $file) {
-            if (stristr($file, '.nfo') === FALSE)
-                continue;
-
-            $nfo = new File(File_Scan::PATH_QUARANTINE . "/$file", TRUE);
-            $buffer = unserialize($nfo->get_contents());
-
-            $viruses[md5($buffer['filename'])] = $buffer;
-        }
-
-        return $viruses;
+        return $files;
     }
 
     /**
@@ -649,6 +703,10 @@ class File_Scan extends Engine
     {
         clearos_profile(__METHOD__, __LINE__);
 
+        $dir = new Folder(self::PATH_QUARANTINE, TRUE);
+        if (!$dir->exists())
+            $dir->create('root', 'root', 600);
+
         if (!file_exists(File_Scan::FILE_STATE))
             throw new Engine_Exception(lang('file_scan_state_error'), CLEAROS_ERROR);
 
@@ -667,13 +725,97 @@ class File_Scan extends Engine
             throw new Engine_Exception(lang('base_file_not_found'), CLEAROS_ERROR);
 
         $virus = new File($this->state['virus'][$hash]['filename'], TRUE);
-        $virus->move_to(File_Scan::PATH_QUARANTINE . "/$hash.dat");
-        $virus = new File(File_Scan::PATH_QUARANTINE . "/$hash.nfo");
+        
+        $file_extension = '.' . date('ymd_His');
+        $virus->move_to(self::PATH_QUARANTINE . '/' . basename($this->state['virus'][$hash]['filename']) . $file_extension);
 
-        $virus->create('webconfig', 'webconfig', '0640');
-        $virus->add_lines(serialize($this->state['virus'][$hash]));
+        $quarantine_list = new File(self::FILE_QUARANTINE_LIST, TRUE);
+        if (!$quarantine_list->exists())
+            $quarantine_list->create('root', 'root', 600);
+        
+        $quarantine_list->add_lines(
+            $hash . "|" . basename($this->state['virus'][$hash]['filename']) . "|" .
+            dirname($this->state['virus'][$hash]['filename'])  . "|" . $file_extension  
+        );
 
         // Update state file, delete virus
+        unset($this->state['virus'][$hash]);
+        $this->serialize_state($fh);
+    }
+
+    /**
+     * Get whitelist.
+     *
+     * @throws Engine_Exception
+     * @return void
+     */
+
+    public function get_whitelist()
+    {
+        clearos_profile(__METHOD__, __LINE__);
+        $whitelist = new File(self::FILE_WHITELIST, TRUE);
+        if (!$whitelist->exists())
+            return FALSE;
+
+        return $whitelist->get_contents_as_array();
+    }
+
+    /**
+     * Whitelist a file.
+     *
+     * @param string  $hash          MD5 hash of file to whitelist
+     * @param boolean $in_quarantine boolean indicating whether file is in quarantine or not
+     *
+     * @throws Engine_Exception
+     * @return void
+     */
+
+    public function whitelist($hash, $in_quarantine = FALSE)
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        if ($in_quarantine) {
+            $list = $this->get_quarantined_viruses();
+            $quarantine = new File(self::FILE_QUARANTINE_LIST, TRUE);
+            foreach ($list as $file_hash => $meta) {
+                if ($file_hash == $hash) {
+                    $whitelist = new File(self::FILE_WHITELIST, TRUE);
+                    if (!$whitelist->exists())
+                        $whitelist->create('root', 'root', 600);
+                    $whitelist->add_lines("\"" . $meta['folder'] . "/" . $meta['filename'] . "\"");
+                    $virus = new File(self::PATH_QUARANTINE . "/" . $meta['filename'] . $meta['extension'], TRUE);
+                    if ($virus->exists())
+                        $virus->move_to($meta['folder'] . '/' . $meta['filename']);
+                    if ($quarantine->exists())
+                        $quarantine->delete_lines("/^$hash.*/");
+                    break;
+                }
+            }
+            return;
+        }
+        if (!file_exists(File_Scan::FILE_STATE))
+            throw new Engine_Exception(lang('file_scan_state_error'), CLEAROS_ERROR);
+
+        // XXX: Here we use fopen rather than the File class.  This is because the File
+        // class provides us with no way to do file locking (flock).  The state file
+        // is therefore owned by webconfig so that we can manipulate it's contents.
+        if (!($fh = @fopen(File_Scan::FILE_STATE, 'a+')))
+            throw new Engine_Exception(lang('file_scan_state_error'), CLEAROS_ERROR);
+
+        if ($this->unserialize_state($fh) === FALSE) {
+            fclose($fh);
+            throw new Engine_Exception(lang('file_scan_state_error'), CLEAROS_ERROR);
+        }
+
+        if (!isset($this->state['virus'][$hash]))
+            throw new Engine_Exception(lang('base_file_not_found'), CLEAROS_ERROR);
+
+        $whitelist = new File(self::FILE_WHITELIST, TRUE);
+        if (!$whitelist->exists())
+            $whitelist->create('root', 'root', 600);
+        $whitelist->add_lines("\"" . $this->state['virus'][$hash]['filename'] . "\"");
+
+        // Update state file, remove file
         unset($this->state['virus'][$hash]);
         $this->serialize_state($fh);
     }
@@ -761,27 +903,6 @@ class File_Scan extends Engine
         $this->state['timestamp'] = 0;
 
         unset($this->state['stats']);
-    }
-
-    /**
-     * Restores a quarantined virus to its orignal location/filename.
-     *
-     * @param string $hash MD5 hash of virus filename to restore
-     *
-     * @return void
-     * @throws Engine_Exception
-     */
-
-    public function restore_quarantined_virus($hash)
-    {
-        clearos_profile(__METHOD__, __LINE__);
-
-        $nfo = new File(File_Scan::PATH_QUARANTINE . "/$hash.nfo", TRUE);
-        $virus = unserialize($nfo->get_contents());
-
-        $dat = new File(File_Scan::PATH_QUARANTINE . "/$hash.dat", TRUE);
-        $dat->move_to($virus['filename']);
-        $nfo->delete();
     }
 
     /**
@@ -886,6 +1007,11 @@ class File_Scan extends Engine
         if (empty($dirs))
             throw new Engine_Exception(lang('file_scan_no_folders_selected'));
 
+        // Make sure path exists
+        $dir = new Folder(self::PATH_QUARANTINE, TRUE);
+        if (!$dir->exists())
+            $dir->create('root', 'root', 600);
+
         $options = array();
         $options['background'] = TRUE;
         $shell = new Shell();
@@ -954,6 +1080,27 @@ class File_Scan extends Engine
             return FALSE;
 
         return TRUE;
+    }
+
+    /**
+     * Get the quarantine setting
+     *
+     * @return Boolean
+     */
+
+    function get_quarantine()
+    {
+        clearos_profile(__METHOD__, __LINE__);
+
+        if (!$this->is_loaded)
+            $this->_load_config();
+
+        $quarantine = $this->config['quarantine'];
+
+        if ($quarantine == NULL || !$quarantine)
+            return FALSE;
+        else
+            return TRUE;
     }
 
     /**
@@ -1110,6 +1257,18 @@ class File_Scan extends Engine
         clearos_profile(__METHOD__, __LINE__);
     }
 
+    /**
+     * Validation routine for quarantine.
+     *
+     * @param boolean $quarantine quarantine
+     *
+     * @return mixed void if quarantine on error is valid, errmsg otherwise
+     */
+
+    public function validate_quarantine($quarantine)
+    {
+        clearos_profile(__METHOD__, __LINE__);
+    }
 }
 
 // vi: ts=4

@@ -1,7 +1,7 @@
 
 Name: app-file-scan
 Epoch: 1
-Version: 2.0.18
+Version: 2.0.19
 Release: 1%{dist}
 Summary: Antimalware File Scanner
 License: GPLv3
@@ -37,6 +37,7 @@ mkdir -p -m 755 %{buildroot}/usr/clearos/apps/file_scan
 cp -r * %{buildroot}/usr/clearos/apps/file_scan/
 
 install -d -m 0755 %{buildroot}/var/clearos/file_scan
+install -d -m 700 %{buildroot}/var/clearos/file_scan/quarantine
 install -D -m 0644 packaging/app-file-scan.cron %{buildroot}/etc/cron.d/app-file-scan
 install -D -m 0755 packaging/file_scan %{buildroot}/usr/sbin/file_scan
 install -D -m 0644 packaging/file_scan.conf %{buildroot}/etc/clearos/file_scan.conf
@@ -79,6 +80,7 @@ exit 0
 %exclude /usr/clearos/apps/file_scan/packaging
 %dir /usr/clearos/apps/file_scan
 %dir /var/clearos/file_scan
+%dir /var/clearos/file_scan/quarantine
 /usr/clearos/apps/file_scan/deploy
 /usr/clearos/apps/file_scan/language
 /usr/clearos/apps/file_scan/libraries

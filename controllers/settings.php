@@ -7,7 +7,7 @@
  * @package    file-scan
  * @subpackage controllers
  * @author     ClearFoundation <developer@clearfoundation.com>
- * @copyright  2011 ClearFoundation
+ * @copyright  2011-2015 ClearFoundation
  * @license    http://www.gnu.org/copyleft/gpl.html GNU General Public License version 3 or later
  * @link       http://www.clearfoundation.com/docs/developer/apps/file_scan/
  */
@@ -40,7 +40,7 @@
  * @package    file-scan
  * @subpackage controllers
  * @author     ClearFoundation <developer@clearfoundation.com>
- * @copyright  2011 ClearFoundation
+ * @copyright  2011-2015 ClearFoundation
  * @license    http://www.gnu.org/copyleft/gpl.html GNU General Public License version 3 or later
  * @link       http://www.clearfoundation.com/docs/developer/apps/file_scan/
  */
@@ -93,6 +93,7 @@ class Settings extends ClearOS_Controller
         // Load libraries
         //---------------
 
+        $this->lang->load('base');
         $this->lang->load('file_scan');
         $this->load->library('file_scan/File_Scan');
 

@@ -1,5 +1,6 @@
 <?php
 
+$lang['file_scan_actions'] = 'Actions';
 $lang['file_scan_antimalware'] = 'Antimalware';
 $lang['file_scan_app_description'] = 'The File Scanner app scans the server for infected files.';
 $lang['file_scan_app_name'] = 'Antimalware File Scanner';
@@ -16,6 +17,7 @@ $lang['file_scan_email_invalid'] = 'E-mail is invalid.';
 $lang['file_scan_email_notification'] = 'Email Notifications';
 $lang['file_scan_engine_version'] = 'Engine Version';
 $lang['file_scan_file_scan_already_running'] = 'File scan already running.';
+$lang['file_scan_file_whitelisted'] = 'File has been whitelisted.';
 $lang['file_scan_flexshare'] = 'Flexshare';
 $lang['file_scan_ftp'] = 'FTP';
 $lang['file_scan_home'] = 'Home';
@@ -31,7 +33,10 @@ $lang['file_scan_no_folders_selected'] = 'No folders have been selected for scan
 $lang['file_scan_no_malware_found'] = 'No malware found.';
 $lang['file_scan_notify_on_error'] = 'Alert on Error';
 $lang['file_scan_notify_on_virus'] = 'Alert on Virus';
+$lang['file_scan_path'] = 'Path';
 $lang['file_scan_progress'] = 'Progress';
+$lang['file_scan_quarantine'] = 'Quarantine';
+$lang['file_scan_quarantine_on_find'] = 'Move Infected Files to Quarantine';
 $lang['file_scan_scanner'] = 'Scanner';
 $lang['file_scan_scanning'] = 'Scanning';
 $lang['file_scan_schedule'] = 'Schedule';
@@ -39,6 +44,9 @@ $lang['file_scan_state_error'] = 'Unable to read or access service status.';
 $lang['file_scan_time'] = 'Total Scan Time (sec)';
 $lang['file_scan_total_dirs_scanned'] = 'Total Directories Scanned';
 $lang['file_scan_total_files_scanned'] = 'Total Files Scanned';
+$lang['file_scan_virus_deleted'] = 'File containing virus has been deleted.';
 $lang['file_scan_virus_or_note'] = 'Virus/Note';
+$lang['file_scan_virus_quarantined'] = 'File containing virus has been quarantined.';
 $lang['file_scan_web'] = 'Web';
 $lang['file_scan_web_proxy_cache'] = 'Web Proxy Cache';
+$lang['file_scan_whitelist'] = 'Whitelist';

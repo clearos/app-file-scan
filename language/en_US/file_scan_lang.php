@@ -29,6 +29,7 @@ $lang['file_scan_last_run'] = 'Last scanner run: %s';
 $lang['file_scan_last_scan_result'] = 'Last Scan Result';
 $lang['file_scan_mail'] = 'E-mail';
 $lang['file_scan_malware_found'] = 'Malware found!';
+$lang['file_scan_moved_to_quarantine'] = 'Moved to quarntine';
 $lang['file_scan_no_folders_selected'] = 'No folders have been selected for scanning.  Please edit your settings and select at least one directory.  View the documentation for adding custom paths.';
 $lang['file_scan_no_malware_found'] = 'No malware found.';
 $lang['file_scan_notify_on_error'] = 'Alert on Error';

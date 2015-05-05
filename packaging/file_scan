@@ -316,17 +316,13 @@ foreach ($dirs as $dir) {
                     'quarantined' => $quarantine,
                     'dir' => $dir, 'timestamp' => time()
                 );
-                if ($quarantine) {
-                    $file = new File($av_state['filename'] . '.' . date('ymd_His'), TRUE);
-                    if (!$file->exists())
-                        $file->create('root', 'root' , 600);
-                    $file->replace($av_state['filename']);
-                    $file->move_to(File_Scan::PATH_QUARANTINE);
-                }
                 break;
         }
 
         serialize_state($fh);
+
+	if ($quarantine && isset($av_state['virus'][$hash]))
+	    $file_scan->quarantine_virus($hash);
 
         if ($debug)
             printf('%.02f: %s', $av_state['count'] * 100 / $av_state['total'], $buffer);

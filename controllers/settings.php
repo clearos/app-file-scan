@@ -100,7 +100,9 @@ class Settings extends ClearOS_Controller
         // Handle form submit
         //-------------------
 
-        $this->form_validation->set_policy('notify_email', 'file_scan/File_Scan', 'validate_notify_email', FALSE);
+        $this->form_validation->set_policy('quarantine', 'file_scan/File_Scan', 'validate_quarantine', FALSE);
+        $validate_email = ($this->input->post('notify_on_virus') || $this->input->post('notify_on_error'));
+        $this->form_validation->set_policy('notify_email', 'file_scan/File_Scan', 'validate_notify_email', $validate_email);
         $this->form_validation->set_policy('notify_on_virus', 'file_scan/File_scan', 'validate_notify_on_virus', FALSE);
         $this->form_validation->set_policy('notify_on_error', 'file_scan/File_scan', 'validate_notify_on_error', FALSE);
         $form_ok = $this->form_validation->run();
@@ -133,11 +135,15 @@ class Settings extends ClearOS_Controller
                     $this->file_scan->set_scan_schedule('0', $hour, '*', '*', '*');
                 }
 
+                // Update Actions
+                //---------------
+                $this->file_scan->set_quarantine($this->input->post('quarantine'));
+
                 // Update Alerts
                 //--------------
-                $this->file_scan->set_notify_email($this->input->post('notify_email'));
                 $this->file_scan->set_notify_on_virus($this->input->post('notify_on_virus'));
                 $this->file_scan->set_notify_on_error($this->input->post('notify_on_error'));
+                $this->file_scan->set_notify_email($this->input->post('notify_email'));
 
                 $this->page->set_status_updated();
                 redirect('/file_scan/settings');
@@ -159,6 +165,8 @@ class Settings extends ClearOS_Controller
             $data['notify_on_virus'] = $this->file_scan->get_notify_on_virus();
             $data['notify_on_error'] = $this->file_scan->get_notify_on_error();
             $data['notify_email'] = $this->file_scan->get_notify_email();
+
+            $data['quarantine'] = $this->file_scan->get_quarantine();
 
             $schedule = $this->file_scan->get_scan_schedule();
             $data['hour'] = $schedule['hour'];

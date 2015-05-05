@@ -69,7 +69,7 @@ if (! is_numeric($hour))
 // Form
 ///////////////////////////////////////////////////////////////////////////////
 
-echo form_open('file_scan/settings'); 
+echo form_open('file_scan/settings/edit'); 
 echo form_header(lang('base_settings'));
 
 echo fieldset_header(lang('file_scan_schedule'));

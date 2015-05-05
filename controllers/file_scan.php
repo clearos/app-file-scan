@@ -68,6 +68,7 @@ class File_Scan extends ClearOS_Controller
                 $this->file_scan->stop_scan();
         } catch (\Exception $e) {
             $this->page->set_message(clearos_exception_message($e), 'warning');
+            redirect('/file_scan/settings');
         }
 
         // Load views

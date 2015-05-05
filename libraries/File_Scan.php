@@ -60,7 +60,6 @@ use \clearos\apps\base\File as File;
 use \clearos\apps\base\Configuration_File as Configuration_File;
 use \clearos\apps\base\Folder as Folder;
 use \clearos\apps\base\Shell as Shell;
-use \clearos\apps\file_scan\File_Scan as File_Scan;
 use \clearos\apps\tasks\Cron as Cron;
 
 clearos_load_library('base/Engine');
@@ -68,7 +67,6 @@ clearos_load_library('base/File');
 clearos_load_library('base/Configuration_File');
 clearos_load_library('base/Folder');
 clearos_load_library('base/Shell');
-clearos_load_library('file_scan/File_Scan');
 clearos_load_library('tasks/Cron');
 
 // Exceptions
@@ -260,7 +258,7 @@ class File_Scan extends Engine
         // XXX: Here we use fopen rather than the File class.  This is because the File
         // class provides us with no way to do file locking (flock).  The state file
         // is therefore owned by webconfig so that we can manipulate it's contents.
-        if (!($fh = @fopen(File_Scan::FILE_STATE, 'a+')))
+        if (!($fh = @fopen(self::FILE_STATE, 'a+')))
             throw new Engine_Exception(lang('file_scan_state_error'), CLEAROS_ERROR);
 
         if ($this->unserialize_state($fh) === FALSE) {
@@ -374,8 +372,8 @@ class File_Scan extends Engine
         // Unserialize the scanner state file (if it exists)
         //--------------------------------------------------
 
-        if (file_exists(File_Scan::FILE_STATE)) {
-            if (($fh = @fopen(File_Scan::FILE_STATE, 'r'))) {
+        if (file_exists(self::FILE_STATE)) {
+            if (($fh = @fopen(self::FILE_STATE, 'r'))) {
                 $this->unserialize_state($fh);
                 fclose($fh);
             }
@@ -392,18 +390,18 @@ class File_Scan extends Engine
         // Determine the scanner's status
         //-------------------------------
 
-        $info['state'] = File_Scan::STATUS_IDLE;
+        $info['state'] = self::STATUS_IDLE;
         $info['state_text'] = lang('file_scan_idle');
 
-        if (file_exists(File_Scan::FILE_LOCKFILE)) {
-            if (($fh = @fopen(File_Scan::FILE_LOCKFILE, 'r'))) {
+        if (file_exists(self::FILE_LOCKFILE)) {
+            if (($fh = @fopen(self::FILE_LOCKFILE, 'r'))) {
                 list($pid) = fscanf($fh, '%d');
 
                 if (!file_exists("/proc/$pid")) {
-                    $info['state'] = File_Scan::STATUS_INTERRUPT;
+                    $info['state'] = self::STATUS_INTERRUPT;
                     $info['state_text'] = lang('file_scan_interrupted');
                 } else {
-                    $info['state'] = File_Scan::STATUS_SCANNING;
+                    $info['state'] = self::STATUS_SCANNING;
                     $info['state_text'] = lang('file_scan_scanning');
                 }
 
@@ -507,9 +505,9 @@ class File_Scan extends Engine
         // Create a generic status message for the state of the scanner
         //-------------------------------------------------------------
 
-        if ($info['state'] === File_Scan::STATUS_IDLE)
+        if ($info['state'] === self::STATUS_IDLE)
             $info['status'] = sprintf(lang('file_scan_last_run'), $info['last_run']);
-        else if ($info['state'] === File_Scan::STATUS_SCANNING)
+        else if ($info['state'] === self::STATUS_SCANNING)
             $info['status'] = sprintf(lang('file_scan_currently_scanning'), $info['current_scandir']);
         else
             $info['status'] = '...';
@@ -707,13 +705,13 @@ class File_Scan extends Engine
         if (!$dir->exists())
             $dir->create('root', 'root', 600);
 
-        if (!file_exists(File_Scan::FILE_STATE))
+        if (!file_exists(self::FILE_STATE))
             throw new Engine_Exception(lang('file_scan_state_error'), CLEAROS_ERROR);
 
         // XXX: Here we use fopen rather than the File class.  This is because the File
         // class provides us with no way to do file locking (flock).  The state file
         // is therefore owned by webconfig so that we can manipulate it's contents.
-        if (!($fh = @fopen(File_Scan::FILE_STATE, 'a+')))
+        if (!($fh = @fopen(self::FILE_STATE, 'a+')))
             throw new Engine_Exception(lang('file_scan_state_error'), CLEAROS_ERROR);
 
         if ($this->unserialize_state($fh) === FALSE) {
@@ -793,13 +791,13 @@ class File_Scan extends Engine
             }
             return;
         }
-        if (!file_exists(File_Scan::FILE_STATE))
+        if (!file_exists(self::FILE_STATE))
             throw new Engine_Exception(lang('file_scan_state_error'), CLEAROS_ERROR);
 
         // XXX: Here we use fopen rather than the File class.  This is because the File
         // class provides us with no way to do file locking (flock).  The state file
         // is therefore owned by webconfig so that we can manipulate it's contents.
-        if (!($fh = @fopen(File_Scan::FILE_STATE, 'a+')))
+        if (!($fh = @fopen(self::FILE_STATE, 'a+')))
             throw new Engine_Exception(lang('file_scan_state_error'), CLEAROS_ERROR);
 
         if ($this->unserialize_state($fh) === FALSE) {

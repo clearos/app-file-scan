@@ -486,16 +486,20 @@ class File_Scan extends Engine
         // Other information
         //------------------
 
-        $info['error_count'] = count($this->state['error']);
-        $info['malware_count'] = count($this->state['virus']);
+        $info['error_count'] = 0;
+        $info['malware_count'] = 0;
         $info['current_scandir'] = $this->state['dir'];
 
         // Errors and viruses
         // ------------------
-        if (isset($this->state['virus']))
+        if (isset($this->state['virus'])) {
             $info['virus'] = $this->state['virus'];
-        if (isset($this->state['error']))
+            $info['malware_count'] = count($this->state['virus']);
+        }
+        if (isset($this->state['error'])) {
             $info['error'] = $this->state['error'];
+            $info['error_count'] = count($this->state['error']);
+        }
 
         // Stats
         // -----

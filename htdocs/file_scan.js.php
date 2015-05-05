@@ -62,7 +62,7 @@ $(document).ready(function() {
             dataType: 'json',
             success : function(json) {
 				showData(json);
-                if ((json.state != 0))
+                if (json.state != 0)
                     window.setTimeout(getData, 3000);
             },
 			error: function (XMLHttpRequest, textStatus, errorThrown) {

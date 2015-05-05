@@ -219,7 +219,8 @@ foreach ($dirs as $dir) {
     $safe_dir = escapeshellarg($dir);
 
     $av_state['dir'] = $dir;
-    $av_state['filename'] = '-';
+    $av_state['filename'] = '';
+    $av_state['filename_with_path'] = '';
     $av_state['count'] = 0;
 
     serialize_state($fh);
@@ -237,7 +238,16 @@ foreach ($dirs as $dir) {
     if ($debug) echo("Scanning directory: $safe_dir\n");
 
     putenv('LANG=en_US');
-    $ph = popen(File_Scan::FILE_CLAMSCAN . " --stdout $clam_scan_options -r $safe_dir 2>/dev/null", 'r');
+    $file_scan = new File_Scan();
+    $whitelist = $file_scan->get_whitelist();
+    $whitelist_options = '';
+    if ($whitelist !== FALSE && !empty($whitelist)) {
+        foreach ($whitelist as $whitelisted_filename) {
+	    if (trim($whitelisted_filename) != '')
+		    $whitelist_options .= ' --exclude ' . $whitelisted_filename;
+	}
+    }
+    $ph = popen(File_Scan::FILE_CLAMSCAN . " --stdout $clam_scan_options $whitelist_options -r $safe_dir 2>/dev/null", 'r');
 
     while (!feof($ph)) {
         $buffer = fgets($ph, 4096);
@@ -286,6 +296,8 @@ foreach ($dirs as $dir) {
             case 'Empty file':
             case 'Symbolic link':
                 break;
+            case 'Excluded':
+                break;
             case 'ERROR':
                 // Remember files with errors...
                 $av_state['error'][$hash] = array(
@@ -298,21 +310,19 @@ foreach ($dirs as $dir) {
                 // Virus found...
                 $av_state['virus'][$hash] = array(
                     'filename' => $av_state['filename'],
+                    'filename_without_path' => basename($av_state['filename']),
+                    'path' => dirname($av_state['filename']),
                     'virus' => str_replace(' FOUND', '', $av_state['result']),
                     'quarantined' => $quarantine,
                     'dir' => $dir, 'timestamp' => time()
                 );
-                if ($quarantine) {
-                    $file = new File($av_state['filename'] . '.' . date('ymd_His'), TRUE);
-                    if (!$file->exists())
-                        $file->create('root', 'root' , 600);
-                    $file->replace($av_state['filename']);
-                    $file->move_to(File_Scan::PATH_QUARANTINE);
-                }
                 break;
         }
 
         serialize_state($fh);
+
+	if ($quarantine && isset($av_state['virus'][$hash]))
+	    $file_scan->quarantine_virus($hash);
 
         if ($debug)
             printf('%.02f: %s', $av_state['count'] * 100 / $av_state['total'], $buffer);

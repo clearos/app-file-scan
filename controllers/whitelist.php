@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Antivirus file scan controller.
+ * File Scan quarantine controller.
  *
  * @category   apps
  * @package    file-scan
@@ -30,11 +30,15 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////////
+// D E P E N D E N C I E S
+///////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////
 // C L A S S
 ///////////////////////////////////////////////////////////////////////////////
 
 /**
- * Antivirus file scan controller.
+ * File Scan whitelist controller.
  *
  * @category   apps
  * @package    file-scan
@@ -45,107 +49,50 @@
  * @link       http://www.clearfoundation.com/docs/developer/apps/file_scan/
  */
 
-class Scan extends ClearOS_Controller
+class Whitelist extends ClearOS_Controller
 {
     /**
-     * File scanner execution.
+     * Account import progress controller
      *
      * @return view
      */
 
     function index()
     {
-        // Load libraries
+        // Load dependencies
+        //------------------
+
+        $this->lang->load('file_scan');
+        $this->load->library('file_scan/File_Scan');
+
+        // Load view data
         //---------------
 
-        $this->lang->load('base');
-        $this->lang->load('file_scan');
+        $data = array();
+
+        $data['files'] = $this->file_scan->get_whitelist();
 
         // Load views
         //-----------
 
-        $this->page->view_form('file_scan/scan', $data, lang('file_scan_antimalware') . ' - ' . lang('base_status'));
+        $this->page->view_form('whitelist', $data, lang('file_scan_whitelist'));
     }
 
     /**
-     * JSON encoded scan information
+     * File Scan delete whitelist file controller
      *
-     * @return string JSON encoded information
-     */
-
-    function info()
-    {
-        // Load dependencies
-        //------------------
-
-        $this->load->library('file_scan/File_Scan');
-
-        // Run synchronize
-        //----------------
-
-        try {
-            $data = $this->file_scan->get_info();
-            $data['error_code'] = 0;
-        } catch (Exception $e) {
-            $data['error_code'] = clearos_exception_code($e);
-            $data['error_message'] = clearos_exception_message($e);
-        }
-
-        // Return status message
-        //----------------------
-
-        $this->output->set_header("Content-Type: application/json");
-        $this->output->set_output(json_encode($data));
-    }
-
-    /**
-     * File Scan delete file controller
-     *
-     * @return view
+     * @return void
      */
 
     function delete($id)
     {
         // Load libraries
         //---------------
+        $this->lang->load('base');
         $this->load->library('file_scan/File_Scan');
 
-        $this->file_scan->delete_virus($id);
-        $this->page->set_message(lang('file_scan_virus_deleted'), 'info');
-        redirect('file_scan');
-    }
-
-    /**
-     * File Scan quarantine file controller
-     *
-     * @return view
-     */
-
-    function quarantine($id)
-    {
-        // Load libraries
-        //---------------
-        $this->load->library('file_scan/File_Scan');
-
-        $this->file_scan->quarantine_virus($id);
-        $this->page->set_message(lang('file_scan_virus_quarantined'), 'info');
-        redirect('file_scan');
-    }
- 
-    /**
-     * File Scan whitelist file controller
-     *
-     * @return view
-     */
-
-    function whitelist($id)
-    {
-        // Load libraries
-        //---------------
-        $this->load->library('file_scan/File_Scan');
-
-        $this->file_scan->whitelist($id);
-        $this->page->set_message(lang('file_scan_file_whitelisted'), 'info');
+        $this->file_scan->delete_whitelist($id);
+        $this->page->set_message(lang('base_configuration_updated'), 'info');
         redirect('file_scan');
     }
 }

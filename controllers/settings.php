@@ -7,7 +7,7 @@
  * @package    file-scan
  * @subpackage controllers
  * @author     ClearFoundation <developer@clearfoundation.com>
- * @copyright  2011 ClearFoundation
+ * @copyright  2011-2015 ClearFoundation
  * @license    http://www.gnu.org/copyleft/gpl.html GNU General Public License version 3 or later
  * @link       http://www.clearfoundation.com/docs/developer/apps/file_scan/
  */
@@ -40,7 +40,7 @@
  * @package    file-scan
  * @subpackage controllers
  * @author     ClearFoundation <developer@clearfoundation.com>
- * @copyright  2011 ClearFoundation
+ * @copyright  2011-2015 ClearFoundation
  * @license    http://www.gnu.org/copyleft/gpl.html GNU General Public License version 3 or later
  * @link       http://www.clearfoundation.com/docs/developer/apps/file_scan/
  */
@@ -93,6 +93,7 @@ class Settings extends ClearOS_Controller
         // Load libraries
         //---------------
 
+        $this->lang->load('base');
         $this->lang->load('file_scan');
         $this->load->library('file_scan/File_Scan');
 
@@ -100,7 +101,10 @@ class Settings extends ClearOS_Controller
         //-------------------
 
         $this->form_validation->set_policy('quarantine', 'file_scan/File_Scan', 'validate_quarantine', FALSE);
-        $this->form_validation->set_policy('notify_email', 'file_scan/File_Scan', 'validate_notify_email', FALSE);
+        if ($this->input->post('notify_on_virus') || $this->input->post('notify_on_error'))
+            $this->form_validation->set_policy('notify_email', 'file_scan/File_Scan', 'validate_notify_email', TRUE);
+        else
+            $this->form_validation->set_policy('notify_email', 'file_scan/File_Scan', 'validate_notify_email', FALSE);
         $this->form_validation->set_policy('notify_on_virus', 'file_scan/File_scan', 'validate_notify_on_virus', FALSE);
         $this->form_validation->set_policy('notify_on_error', 'file_scan/File_scan', 'validate_notify_on_error', FALSE);
         $form_ok = $this->form_validation->run();
@@ -139,9 +143,9 @@ class Settings extends ClearOS_Controller
 
                 // Update Alerts
                 //--------------
-                $this->file_scan->set_notify_email($this->input->post('notify_email'));
                 $this->file_scan->set_notify_on_virus($this->input->post('notify_on_virus'));
                 $this->file_scan->set_notify_on_error($this->input->post('notify_on_error'));
+                $this->file_scan->set_notify_email($this->input->post('notify_email'));
 
                 $this->page->set_status_updated();
                 redirect('/file_scan/settings');

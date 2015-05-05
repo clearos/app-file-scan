@@ -41,15 +41,14 @@ $this->lang->load('network');
 ///////////////////////////////////////////////////////////////////////////////
 
 $headers = array(
-    lang('base_filename'),
-    lang('base_timestamp')
+    lang('base_filename')
 );
 
 ///////////////////////////////////////////////////////////////////////////////
 // Items
 ///////////////////////////////////////////////////////////////////////////////
 
-foreach ($files as $hash => $virus) {
+foreach ($files as $filename) {
 
     ///////////////////////////////////////////////////////////////////////////
     // Item buttons
@@ -57,8 +56,7 @@ foreach ($files as $hash => $virus) {
 
     $anchors = button_set(
         array(
-            anchor_delete('/app/file_scan/quarantine/delete/' . $hash, 'high'),
-            anchor_custom('/app/file_scan/quarantine/whitelist/' . $hash, lang('file_scan_whitelist'), 'low')
+            anchor_delete('/app/file_scan/whitelist/delete/' . md5($filename), 'high')
         )
     );
 
@@ -70,8 +68,7 @@ foreach ($files as $hash => $virus) {
     $item['action'] = NULL;
     $item['anchors'] = $anchors;
     $item['details'] = array(
-        $virus['filename'],
-        date('F d, Y @ H:i', $virus['timestamp']),
+        trim($filename, '"')
     );
 
     $items[] = $item;
@@ -84,8 +81,8 @@ foreach ($files as $hash => $virus) {
 $options['default_rows'] = 100;
 
 echo summary_table(
-    lang('file_scan_quarantine'),
-    array(anchor_custom('/app/file_scan/whitelist', lang('file_scan_whitelist'), 'high')),
+    lang('file_scan_whitelist'),
+    array(anchor_cancel('/app/file_scan', 'high')),
     $headers,
     $items,
     $options

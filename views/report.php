@@ -56,6 +56,7 @@ if ($is_running) {
 
 $headers = array(
         lang('base_filename'),
+        lang('file_scan_path'),
         lang('file_scan_virus_or_note')
 );
 

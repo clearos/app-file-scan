@@ -81,7 +81,7 @@ class Quarantine extends ClearOS_Controller
     /**
      * File Scan quarantine delete file controller
      *
-     * @return view
+     * @return void
      */
 
     function delete($id)
@@ -92,6 +92,23 @@ class Quarantine extends ClearOS_Controller
 
         $this->file_scan->delete_virus($id, TRUE);
         $this->page->set_message(lang('file_scan_virus_deleted'), 'info');
+        redirect('file_scan');
+    }
+
+    /**
+     * File Scan quarantine whitelist file controller
+     *
+     * @return void
+     */
+
+    function whitelist($id)
+    {
+        // Load libraries
+        //---------------
+        $this->load->library('file_scan/File_Scan');
+
+        $this->file_scan->whitelist($id, TRUE);
+        $this->page->set_message(lang('file_scan_file_whitelisted'), 'info');
         redirect('file_scan');
     }
 }

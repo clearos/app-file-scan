@@ -113,11 +113,9 @@ $(document).ready(function() {
         }
 
         if ((info.state == 1)) {
-            $("#settings").hide();
             $("#start").hide();
             $("#stop").show();
         } else {
-            $("#settings").show();
             $("#start").show();
             $("#stop").hide();
         }

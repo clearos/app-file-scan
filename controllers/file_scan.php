@@ -76,6 +76,12 @@ class File_Scan extends ClearOS_Controller
 
         $views = array('file_scan/scan', 'file_scan/report', 'file_scan/quarantine');
 
-        $this->page->view_forms($views, lang('file_scan_app_name'));
+ 
+        $options = array(
+            'breadcrumb_links' => array(
+                'settings' => array('url' => '/app/file_scan/settings', 'tag' => lang('base_settings'))
+            )
+        );
+        $this->page->view_controllers($views, lang('file_scan_app_name'), $options);
     }
 }

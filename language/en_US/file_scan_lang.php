@@ -43,6 +43,7 @@ $lang['file_scan_scanning'] = 'Scanning';
 $lang['file_scan_schedule'] = 'Schedule';
 $lang['file_scan_state_error'] = 'Unable to read or access service status.';
 $lang['file_scan_time'] = 'Total Scan Time (sec)';
+$lang['file_scan_tooltip_custom_folders'] = 'To scan custom folders or mount points, edit /etc/avscan.conf.';
 $lang['file_scan_total_dirs_scanned'] = 'Total Directories Scanned';
 $lang['file_scan_total_files_scanned'] = 'Total Files Scanned';
 $lang['file_scan_virus_deleted'] = 'File containing virus has been deleted.';

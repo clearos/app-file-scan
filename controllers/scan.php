@@ -58,46 +58,9 @@ class Scan extends ClearOS_Controller
         // Load libraries
         //---------------
 
-        $this->load->library('file_scan/File_Scan');
         $this->lang->load('base');
         $this->lang->load('file_scan');
 
-        // Handle form submit
-        //-------------------
-
-        if ($this->input->post('submit')) {
-            try {
-                $requested = $this->input->post('directories');
-                $presets = $this->file_scan->get_directory_resets();
-                $configured = $this->file_scan->get_directories();
-                $schedule_exists = $this->file_scan->scan_schedule_exists();
-
-                // Redirect to main page
-                $this->page->set_success(lang('base_system_updated'));
-                redirect('/file_scan/');
-            } catch (Exception $e) {
-                $this->page->view_exception($e);
-                return;
-            }
-        }
-
-        // Load view data
-        //---------------
-
-        try {
-            $data['directories'] = $this->file_scan->get_directories();
-            $data['presets'] = $this->file_scan->get_directory_presets();
-            $data['schedule_exists'] = $this->file_scan->scan_schedule_exists();
-            $data['is_running'] = $this->file_scan->is_scan_running();
-
-
-            $schedule = $this->file_scan->get_scan_schedule();
-            $data['hour'] = $schedule['hour'];
-        } catch (Exception $e) {
-            $this->page->view_exception($e);
-            return;
-        }
- 
         // Load views
         //-----------
 

@@ -43,8 +43,7 @@ $this->lang->load('file_scan');
 $read_only = TRUE;
 
 $buttons_off = array(
-    form_submit_custom('start', lang('base_start'), 'high', array('id' => 'start')),
-    anchor_custom('/app/file_scan/settings/edit', lang('base_settings'), 'high', array('id' => 'settings'))
+    form_submit_custom('start', lang('base_start'), 'high', array('id' => 'start'))
 );
 
 $buttons_on = array(

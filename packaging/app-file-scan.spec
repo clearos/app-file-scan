@@ -1,7 +1,7 @@
 
 Name: app-file-scan
 Epoch: 1
-Version: 2.1.6
+Version: 2.1.7
 Release: 1%{dist}
 Summary: Antimalware File Scanner
 License: GPLv3
@@ -78,6 +78,7 @@ exit 0
 %files core
 %defattr(-,root,root)
 %exclude /usr/clearos/apps/file_scan/packaging
+%exclude /usr/clearos/apps/file_scan/unify.json
 %dir /usr/clearos/apps/file_scan
 %dir /var/clearos/file_scan
 %dir /var/clearos/file_scan/quarantine

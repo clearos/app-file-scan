@@ -62,10 +62,13 @@ class File_Scan extends ClearOS_Controller
         $this->load->library('file_scan/File_Scan');
 
         try {
-            if ($this->input->post('start'))
+            if ($this->input->post('start')) {
                 $this->file_scan->start_scan();
-            else if ($this->input->post('stop'))
+                sleep(2);
+            } else if ($this->input->post('stop')) {
                 $this->file_scan->stop_scan();
+                sleep(2);
+            }
         } catch (\Exception $e) {
             $this->page->set_message(clearos_exception_message($e), 'warning');
             redirect('/file_scan/settings');
@@ -76,12 +79,6 @@ class File_Scan extends ClearOS_Controller
 
         $views = array('file_scan/scan', 'file_scan/report', 'file_scan/quarantine');
 
- 
-        $options = array(
-            'breadcrumb_links' => array(
-                'settings' => array('url' => '/app/file_scan/settings', 'tag' => lang('base_settings'))
-            )
-        );
         $this->page->view_controllers($views, lang('file_scan_app_name'), $options);
     }
 }

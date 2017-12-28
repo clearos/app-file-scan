@@ -53,7 +53,7 @@ var lang_moved_to_quarantine = '<?php echo lang('file_scan_moved_to_quarantine')
 
 $(document).ready(function() {
 
-	getData();
+    window.setTimeout(getData, 200);
 
 	function getData() {
         $.ajax({
@@ -114,10 +114,12 @@ $(document).ready(function() {
 
         if ((info.state == 1)) {
             $("#start").hide();
+            $("#edit").hide();
             $("#stop").show();
         } else {
             $("#start").show();
             $("#stop").hide();
+            $("#edit").show();
         }
 
         // Logs
